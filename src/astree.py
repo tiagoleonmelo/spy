@@ -1,5 +1,7 @@
 import pprint
 
+DISCARD = ["lineno", "end_lineno", "col_offset", "end_col_offset"]
+
 
 class Node:
     """Tree Node. Contains the ast_type and all its attributes and children are stored in children.
@@ -25,7 +27,7 @@ class Node:
     Constant has an attribute called value which holds "Hello World".
 
     - Should we discard ast_type-specific naming for the children? Instead of body/value/argues should it just be a Node attribute called "children"? Or
-    is it relevant for the problem?
+    is it relevant for the problem? -> No, we should not. A Call node (for example) has children in attr:args and attr:func. We can't merge.
     - We must handle these main node types, and its nestings:
         * Expr
         * Assign
@@ -39,35 +41,18 @@ class Node:
         self.ast_type = ast_type
         self.children = children
 
-    def add_child(self, child) -> None:
-        """Add an iterable amount of children to this node's current children pool."""
-
-        self.children += child
-
-    def parse_dict(self, dictionary: dict):
-        """Iterative function to build AST from slice of a program as a dictionary.
-        Entry point."""
-
-        root = Node(
-            dictionary["ast_type"], self.make_children(dictionary["body"])
-        )  # Always assumes the ast_type is "Module"
-
-        return root
-
-    def make_children(self, children: list):
-        """Returns a list of Nodes that correspond to the children."""
-
-        return [self.make_child(child) for child in children]
-
     def make_child(self, child: dict):
-        """Iterate over every attribute.
+        """Entry point function to create the tree.
+
+        Iterate over every attribute.
         If one of them is a dict, this child has a child.
         If one of them is a list, we need to make_children on that list.
 
         Returns a single child.
         """
 
-        # TODO: Create a method where we do this and discard irrelevant attributes (line/col numbers, ast_type, ...)
+        self.clean_child(child)
+
         new_node = Node(child["ast_type"], [child])
 
         for _, value in child.items():
@@ -79,11 +64,36 @@ class Node:
 
         return new_node
 
+    def make_children(self, children: list):
+        """Returns a list of Nodes that correspond to the children."""
+
+        return [self.make_child(child) for child in children]
+
+    def add_child(self, child: list) -> None:
+        """Add an iterable amount of children to this node's current children pool."""
+
+        self.children += child
+
+    def clean_child(self, child: dict):
+        """Remove irrelevant/redundant attributes from the child and its children."""
+
+        for attr in DISCARD:
+            child.pop(attr, None)
+
+        for _, value in child.items():
+            if isinstance(value, dict):
+                self.clean_child(value)
+            elif isinstance(value, list):
+                [self.clean_child(c) for c in value]
+
     def print_tree(self):
         """Print the tree."""
+
         print(self.ast_type)
+
         for child in self.children:
             if isinstance(child, Node):
                 child.print_tree()
             else:
                 pprint.pprint(child)
+                print()

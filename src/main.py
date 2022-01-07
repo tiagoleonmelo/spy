@@ -11,7 +11,10 @@ log = Logger.get_logger("spy")
 
 def main(tree, patterns):
     """Main program"""
-    root = Node("", []).parse_dict(tree) # Static access
+    #root = Node("", []).parse_dict(tree) # Static access
+    #root.print_tree()
+
+    root = Node("", []).make_child(tree)
     root.print_tree()
     
     return 0
@@ -30,7 +33,6 @@ if __name__ == "__main__":
 
     with open(sys.argv[1]) as slice_input:
         tree = json.load(slice_input)
-        pprint(tree)
     log.debug("Finished parsing tree")
 
     with open(sys.argv[2]) as pattern_input:
