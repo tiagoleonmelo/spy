@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import sys
-import ast
 import json
+from astree import Node
+from pprint import pprint
 
 from logger import Logger
-from visitor import ConstantLister
 
 log = Logger.get_logger("spy")
 
-
 def main(tree, patterns):
     """Main program"""
-    lister = ConstantLister()
-    lister.visit(tree)
+    root = Node("", []).parse_dict(tree) # Static access
+    root.print_tree()
+    
     return 0
 
 
@@ -29,7 +29,8 @@ if __name__ == "__main__":
         sys.exit(1)
 
     with open(sys.argv[1]) as slice_input:
-        tree = ast.parse(slice_input.read()) # Needs to be swapped out by a JSON AST parser, can't find any
+        tree = json.load(slice_input)
+        pprint(tree)
     log.debug("Finished parsing tree")
 
     with open(sys.argv[2]) as pattern_input:
