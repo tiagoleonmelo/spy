@@ -1,3 +1,4 @@
+import itertools
 import pprint
 
 DISCARD = ["lineno", "end_lineno", "col_offset", "end_col_offset"]
@@ -43,10 +44,10 @@ class Node:
     Anything other than these is extra (as per project presentation)
     """
 
-    def __init__(self, ast_type: str, children: list) -> None:
+    def __init__(self, ast_type: str, attributes: dict) -> None:
         self.ast_type = ast_type
-        self.children = children
-        self.cool_children = {}
+        self.children = {}
+        self.attributes = attributes
 
     def make_child(self, child: dict):
         """Entry point function to create the tree.
@@ -60,17 +61,15 @@ class Node:
 
         self.clean_child(child)
 
-        new_node = Node(child["ast_type"], [child])
+        new_node = Node(child["ast_type"], child)
 
         for key, value in child.items():
             if isinstance(value, dict):
                 new_child = [self.make_child(value)]
-                new_node.add_child(new_child)
-                new_node.cool_children[key] = new_child
+                new_node.children[key] = new_child
 
             elif isinstance(value, list):
-                new_node.add_child(self.make_children(value))
-                new_node.cool_children[key] = self.make_children(value)
+                new_node.children[key] = self.make_children(value)
 
         return new_node
 
@@ -78,11 +77,6 @@ class Node:
         """Returns a list of Nodes that correspond to the children."""
 
         return [self.make_child(child) for child in children]
-
-    def add_child(self, child: list) -> None:
-        """Add an iterable amount of children to this node's current children pool."""
-
-        self.children += child
 
     def clean_child(self, child: dict):
         """Remove irrelevant/redundant attributes from the child and its children."""
@@ -98,25 +92,16 @@ class Node:
 
     def print_tree(self):
         """Print the tree."""
-
-        print(self.ast_type, len(self.children))
-
-        for child in self.children:
-            if isinstance(child, Node):
-                child.print_tree()
-            else:
-                pprint.pprint(child)
-                print()
-
-    def cool_print(self):
+        
         print('+', end=' ')
-        print(self.ast_type, sum([len(value) for _, value in self.cool_children.items()]))
+        print(self.ast_type, sum([len(value) for _, value in self.children.items()]))
+        pprint.pprint(self.attributes)
 
-        for key, child in self.cool_children.items():
+        for key, child in self.children.items():
             print(key)
-            [n.cool_print() for n in child]
+            [c.print_tree() for c in child]
 
-    def get_variables(self, pattern):
+    def extract_variables(self, pattern):
         """Returns a dictionary with variable names as keys and 'taint chain' as value.
         We consider a 'taint chain' to be the sequence of variables that as led to the key
         being tainted."""
@@ -124,13 +109,11 @@ class Node:
         global variables
 
         # Traverse tree and extract every "id"
-        # TODO: Is it safe to assume the ID will always be in the first child
-        if "id" in self.children[0] and self.children[0]["id"] not in variables:
-            variables[self.children[0]["id"]] = []
+        if "id" in self.attributes and self.attributes["id"] not in variables:
+            variables[self.attributes["id"]] = []
 
-        for child in self.children:
-            if isinstance(child, Node):
-                child.get_variables(pattern)
+        for key, value in self.children.items():
+            [child.extract_variables(pattern) for child in value]
 
         for source in pattern['sources']:
             variables[source] = [source]
@@ -144,15 +127,16 @@ class Node:
         global variables
         
         if self.ast_type == ASSIGN:
-            # If the right part of this assignment is tainted, the left one is now tainted
-            for child in self.children:
-                if isinstance(child, dict):
-                    print(child["value"])
-                    if child["value"].is_tainted():
-                        print("ERRO ERRO ERRO", child)
+            # If the right-hand part of this assignment is tainted, the left one is now tainted
+            val = self.children["value"][0]
+            tainter = val.is_tainted()
 
+            if tainter:
+                for child in self.children["targets"]:
+                    variables[child.attributes["id"]] += tainter
 
         elif self.ast_type == EXPR:
+            # Check value
             pass
 
         elif self.ast_type == IF:
@@ -161,25 +145,34 @@ class Node:
         elif self.ast_type == WHILE:
             pass
 
-        for child in self.children:
-            if isinstance(child, Node):
-                child.taint_nodes()
+        for key, value in self.children.items():
+            [child.taint_nodes() for child in value]
 
     def is_tainted(self):
-        """Returns whether this node has been tainted by one of its children"""
+        """Returns whether this node has been tainted by one of its children, and who"""
 
         global variables
 
+        #print(self.children)
+
         # Check my own id and query variables dict
-        node_id = self.children[0]["id"] if "id" in self.children[0] else None
+        node_id = self.attributes["id"] if "id" in self.attributes else None
 
         # If my ID is in the variables dict (which should be unless None) and it has a non-empty list, I'm tainted
         if node_id in variables and variables[node_id]:
-            return True
+            return variables[node_id]
 
-        for child in self.children:
-            if isinstance(child, Node):
-                if child.is_tainted():
-                    return True
+        # Get all children bundled into one single array
+        children_array = [child.is_tainted() for key, value in self.children.items() for child in value]
 
-        return False
+        # Merge all arrays into a single array (from https://stackoverflow.com/a/716482)
+        # This will be problematic once multiple children have been tainted by the same source! => Duplicate entries
+        merged = list(itertools.chain.from_iterable(children_array))
+        
+        # If one of my children is tainted, I am tainted
+        return merged
+
+    def get_variables(self):
+        """Return the global dictionary of variables"""
+        global variables
+        return variables

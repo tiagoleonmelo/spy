@@ -14,21 +14,25 @@ def main(tree, patterns):
     #root = Node("", []).parse_dict(tree) # Static access
     #root.print_tree()
 
-    root = Node("", []).make_child(tree)
+    root = Node("", {}).make_child(tree)
     #root.print_tree()
-    root.cool_print()
     #root.taint_nodes()
 
     for pattern in patterns:
         # Get program variables and taint the sources
-        vars = root.get_variables(pattern)
-        log.debug("Successfully extracted %d variables from program" % len(vars.keys()))
-        log.info(vars)
+        root.extract_variables(pattern)
+        log.debug("Successfully extracted variables from program")
+        
+        # Fetch variables program - global state of the program
+        variables = root.get_variables()
+        log.debug(variables)
 
         # Traverse tree and taint variables that have been in contact with sources
-        #root.taint_nodes()
+        root.taint_nodes()
+        log.debug(variables)
 
         # Check if there are any tainted sinks
+        
 
         # Build output
     
