@@ -16,6 +16,20 @@ def main(tree, patterns):
 
     root = Node("", []).make_child(tree)
     root.print_tree()
+    #root.taint_nodes()
+
+    for pattern in patterns:
+        # Get program variables and taint the sources
+        vars = root.get_variables(pattern)
+        log.debug("Successfully extracted %d variables from program" % len(vars.keys()))
+        log.info(vars)
+
+        # Traverse tree and taint variables that have been in contact with sources
+        root.taint_nodes()
+
+        # Check if there are any tainted sinks
+
+        # Build output
     
     return 0
 

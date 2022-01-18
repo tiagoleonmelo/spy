@@ -10,7 +10,7 @@ Load AST from JSON file passed as argument, load list of vulnerability patterns,
 ```bash
 $ git clone git@github.com:tiagoleonmelo/spy.git # Cloning with SSH
 $ cd src
-$ python3 main.py slices/example.py patterns.json
+$ python3 main.py slices/1a-basic-flow.py.json patterns/1a-patterns.json
 ```
 
 ## Backlog
