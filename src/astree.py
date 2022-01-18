@@ -108,6 +108,14 @@ class Node:
                 pprint.pprint(child)
                 print()
 
+    def cool_print(self):
+        print('+', end=' ')
+        print(self.ast_type, sum([len(value) for _, value in self.cool_children.items()]))
+
+        for key, child in self.cool_children.items():
+            print(key)
+            [n.cool_print() for n in child]
+
     def get_variables(self, pattern):
         """Returns a dictionary with variable names as keys and 'taint chain' as value.
         We consider a 'taint chain' to be the sequence of variables that as led to the key

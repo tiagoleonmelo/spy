@@ -15,7 +15,8 @@ def main(tree, patterns):
     #root.print_tree()
 
     root = Node("", []).make_child(tree)
-    root.print_tree()
+    #root.print_tree()
+    root.cool_print()
     #root.taint_nodes()
 
     for pattern in patterns:
@@ -25,7 +26,7 @@ def main(tree, patterns):
         log.info(vars)
 
         # Traverse tree and taint variables that have been in contact with sources
-        root.taint_nodes()
+        #root.taint_nodes()
 
         # Check if there are any tainted sinks
 
