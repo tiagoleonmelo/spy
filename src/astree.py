@@ -103,7 +103,7 @@ class Node:
 
     def extract_variables(self, pattern):
         """Returns a dictionary with variable names as keys and 'taint chain' as value.
-        We consider a 'taint chain' to be the sequence of variables that as led to the key
+        We consider a 'taint chain' to be the sequence of variables that has led to the key
         being tainted."""
 
         global variables
@@ -141,23 +141,23 @@ class Node:
 
         elif self.ast_type == EXPR:
 
-            #expr is always a value..
+            # expr is always a value..
             exp = self.children["value"][0]
 
             #impossible to make general case? switch (type) idk
 
-            exp_type=exp.attributes["ast_type"]
+            exp_type = exp.attributes["ast_type"]
             
-            #there are switch staments in python 3.10 but idk
             if exp_type=='Call':
                 #func is always one thing
-                victim=exp.attributes["func"]["id"]
+                victim = exp.attributes["func"]["id"]
                 #tainters->args, can be multiple
 
                 for arg in exp.children["args"]:
                     if arg.is_tainted():
-                        #se varias argumentos da funçao contaminarem estou a adiciona los todos, but is that even bad?
-                        variables[victim] += arg.attributes["id"]
+                        #se varias argumentos da funçao contaminarem estou a adiciona los todos, but is that even bad? -> No
+                        # We must include the chain of the tainted variable here though
+                        variables[victim] += variables[arg.attributes["id"]] + [arg.attributes["id"]]
                 
             else:
                 print(':/')

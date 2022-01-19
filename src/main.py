@@ -2,43 +2,52 @@
 # -*- coding: utf-8 -*-
 import sys
 import json
-from astree import Node
 from pprint import pprint
 
+from astree import Node
 from logger import Logger
 
 log = Logger.get_logger("spy")
 
+
 def check_any_tainted_sinks(vars, pat):
+    """Given the final state of a tree traversal and a pattern, checks which sinks have been tainted.
+    Returns a list of dictionaries for every vulnerability found"""
+
+    vulns = []
+
     for sink in pat["sinks"]:
         if vars[sink]:
-            #for each tainted sink create 1 vuln
-            print('sink tainted',sink)
-            #buildoutput
-            #getting source that tainted the sink from variables might be ass if the lists have more than 1 element?
+            # For each tainted sink create 1 vuln
+            log.debug("Sink %s tainted by %s" % (sink, vars[sink][0]))
 
-def build_output():
-    pass
+            # Getting source that tainted the sink from variables might be ass if the lists have more than 1 element? vvvv
+            # The chains are built by appending to the end, hopefully the first element will always be the source
+            vuln = {
+                "vulnerability": pat["vulnerability"] + str(len(vulns) + 1),
+                "source": vars[sink][0],
+                "sink": sink,
+                "unsanitized flows": "yes", # TODO
+                "sanitized flows": [] # TODO
+            }
 
-def print_output():
-    pass
+            vulns += [vuln]
 
-
+    return vulns
 
 def main(tree, patterns):
     """Main program"""
-    #root = Node("", []).parse_dict(tree) # Static access
-    #root.print_tree()
 
     root = Node("", {}).make_child(tree)
-    #root.print_tree()
-    #root.taint_nodes()
+    output = []
+    # root.print_tree()
+    # root.taint_nodes()
 
     for pattern in patterns:
         # Get program variables and taint the sources
         root.extract_variables(pattern)
         log.debug("Successfully extracted variables from program")
-        
+
         # Fetch variables program - global state of the program
         variables = root.get_variables()
         log.debug(variables)
@@ -47,16 +56,15 @@ def main(tree, patterns):
         root.taint_nodes()
         log.debug(variables)
 
-        # Check if there are any tainted sinks
-        if check_any_tainted_sinks(variables, pattern):
-            # Build output
-            build_output
-        
+        # Check if there are any tainted sinks and append them to vuln list
+        output += check_any_tainted_sinks(variables, pattern)
 
-        
-    #print output
-    print_output()
+    # Write output to file
+    with open("ola.json", "w") as output_file:
+        output_file.write(json.dumps(output))
 
+    # Print output
+    pprint(output)
 
     return 0
 
