@@ -1,8 +1,8 @@
 [
     {
         "vulnerability": "A_1",
-        "source": "c",
         "sink": "e",
+        "source": "c",
         "unsanitized flows": "yes",
         "sanitized flows": []
     }
