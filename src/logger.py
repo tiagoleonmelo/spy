@@ -19,7 +19,7 @@ class Logger:
 
     def __init__(self, logger_name):
         self.cached_loggers[logger_name] = self
-        self.enable_warnings=False
+        self.enable_warnings=True
         self.enable_debug=True
 
     def init_logger(self, enable_debug=False, enable_warnings=False):
