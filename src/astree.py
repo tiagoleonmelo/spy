@@ -145,6 +145,13 @@ class Node:
                     #print(child.attributes["id"]+' contaminated by '+tainter[0])
                     variables[child.attributes["id"]] += tainter
 
+                    # Taint the targets with val's children
+                    # variables[child.attributes["id"]] += [val.children["func"][0].attributes["id"]] # + variables[val.children["func"][0].attributes["id"]]
+
+                    # Clean up spaghetti code
+                    variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
+
+
 
         elif self.ast_type == EXPR:
 
@@ -165,6 +172,7 @@ class Node:
                         #se varias argumentos da funçao contaminarem estou a adiciona los todos, but is that even bad? -> No
                         # We must include the chain of the tainted variable here though
                         variables[victim] += variables[arg.attributes["id"]] + [arg.attributes["id"]]
+                        variables[victim] = list(set(variables[victim]))
                 
             else:
                 print(':/')
@@ -175,6 +183,19 @@ class Node:
         elif self.ast_type == WHILE:
             pass
 
+        elif self.ast_type == CALL:
+            #func is always one thing
+            victim = self.attributes["func"]["id"]
+            #tainters->args, can be multiple
+
+            for arg in self.children["args"]:
+                if arg.is_tainted():
+                    #se varias argumentos da funçao contaminarem estou a adiciona los todos, but is that even bad? -> No
+                    # We must include the chain of the tainted variable here though
+                    print(arg.attributes, arg.ast_type)
+                    variables[victim] += variables[arg.attributes["id"]] + [arg.attributes["id"]]
+                    variables[victim] = list(set(variables[victim]))
+
         for key, value in self.children.items():
             [child.taint_nodes() for child in value]
 
@@ -184,6 +205,7 @@ class Node:
             for child in value:
                 if "id" in child.attributes.keys():
                     variables[child.attributes["id"]] += tainter
+                    variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
 
                 child.taint_children(tainter)
 
@@ -199,7 +221,7 @@ class Node:
 
         # If my ID is in the variables dict (which should be unless None) and it has a non-empty list, I'm tainted
         if node_id in variables and variables[node_id]:
-            return variables[node_id] #+ [node_id]
+            return variables[node_id] + [node_id]
 
         # Get all children bundled into one single array
         children_array = [child.is_tainted() for key, value in self.children.items() for child in value]
