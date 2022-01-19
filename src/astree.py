@@ -6,6 +6,7 @@ EXPR = "Expr"
 ASSIGN = "Assign"
 IF = "If"
 WHILE = "While"
+CALL = "Call"
 
 global variables
 variables = {}
@@ -132,12 +133,18 @@ class Node:
             # If the right-hand part of this assignment is tainted, the left one is now tainted
             val = self.children["value"][0]
             #print(val.attributes)
+
             tainter = val.is_tainted()
 
             if tainter:
+                # Taint the entire right-hand side, their children included
+                val.taint_children(tainter)
+
+                # Taint the left-hand side
                 for child in self.children["targets"]:
                     #print(child.attributes["id"]+' contaminated by '+tainter[0])
                     variables[child.attributes["id"]] += tainter
+
 
         elif self.ast_type == EXPR:
 
@@ -171,31 +178,65 @@ class Node:
         for key, value in self.children.items():
             [child.taint_nodes() for child in value]
 
+    def taint_children(self, tainter):
+        """Taints children of node"""
+        for key, value in self.children.items():
+            for child in value:
+                if "id" in child.attributes.keys():
+                    variables[child.attributes["id"]] += tainter
+
+                child.taint_children(tainter)
+
     def is_tainted(self):
         """Returns whether this node has been tainted by one of its children, and who"""
 
         global variables
 
-        #print(self.children)
+        #print(self.ast_type)
 
         # Check my own id and query variables dict
         node_id = self.attributes["id"] if "id" in self.attributes else None
 
         # If my ID is in the variables dict (which should be unless None) and it has a non-empty list, I'm tainted
         if node_id in variables and variables[node_id]:
-            return variables[node_id]
+            return variables[node_id] #+ [node_id]
 
         # Get all children bundled into one single array
         children_array = [child.is_tainted() for key, value in self.children.items() for child in value]
 
         # Merge all arrays into a single array (from https://stackoverflow.com/a/716482)
         # This will be problematic once multiple children have been tainted by the same source! => Duplicate entries
-        merged = list(itertools.chain.from_iterable(children_array))
+        # Since order does not really matter, we can just `set` it
+        merged = list(set(itertools.chain.from_iterable(children_array)))
         
-        # If one of my children is tainted, I am tainted
+        # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !! IMPORTANT: tell joao
         return merged
+
+    def handle_call(self, val):
+        """I dont give a fuck, special-casing Call ast_types.
+        Calls are tricky since two very important things might be going on whenever there's a call:
+            * Sanitization functions
+            * Sinks
+        
+        """
+
+        # Func is always one thing
+        function = val.attributes["func"]["id"]
+
+        #tainters->args, can be multiple
+
+        for arg in val.children["args"]:
+            if arg.is_tainted():
+                # We must include the chain of the tainted variable here though
+                variables[function] += variables[arg.attributes["id"]] + [arg.attributes["id"]]
 
     def get_variables(self):
         """Return the global dictionary of variables"""
         global variables
         return variables
+
+    def reset_variables(self):
+        """Resets variables from other traversals"""
+        global variables
+        variables = {}
+

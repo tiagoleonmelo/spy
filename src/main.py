@@ -19,7 +19,7 @@ def check_any_tainted_sinks(vars, pat):
     for sink in pat["sinks"]:
         if vars[sink]:
             # For each tainted sink create as many vulns as there are sources tainting it!
-            tainting_sources = [src for src in vars[sink] if src in pat["sources"]]
+            tainting_sources = sorted(list(set([src for src in vars[sink] if src in pat["sources"]])))
             log.debug("Sink %s tainted by %s" % (sink, ', '.join(tainting_sources)))
 
             # Getting source that tainted the sink from variables might be ass if the lists have more than 1 element? vvvv
@@ -47,6 +47,9 @@ def main(tree, patterns):
     # root.taint_nodes()
 
     for pattern in patterns:
+        # Clean previous variables
+        root.reset_variables()
+
         # Get program variables and taint the sources
         root.extract_variables(pattern)
         log.debug("Successfully extracted variables from program")
