@@ -125,19 +125,42 @@ class Node:
         Build taint chains."""
 
         global variables
+
+        #print(variables)
         
         if self.ast_type == ASSIGN:
             # If the right-hand part of this assignment is tainted, the left one is now tainted
             val = self.children["value"][0]
+            #print(val.attributes)
             tainter = val.is_tainted()
 
             if tainter:
                 for child in self.children["targets"]:
+                    #print(child.attributes["id"]+' contaminated by '+tainter[0])
                     variables[child.attributes["id"]] += tainter
 
         elif self.ast_type == EXPR:
-            # Check value
-            pass
+
+            #expr is always a value..
+            exp = self.children["value"][0]
+
+            #impossible to make general case? switch (type) idk
+
+            exp_type=exp.attributes["ast_type"]
+            
+            #there are switch staments in python 3.10 but idk
+            if exp_type=='Call':
+                #func is always one thing
+                victim=exp.attributes["func"]["id"]
+                #tainters->args, can be multiple
+
+                for arg in exp.children["args"]:
+                    if arg.is_tainted():
+                        #se varias argumentos da funçao contaminarem estou a adiciona los todos, but is that even bad?
+                        variables[victim] += arg.attributes["id"]
+                
+            else:
+                print(':/')
 
         elif self.ast_type == IF:
             pass
