@@ -18,20 +18,23 @@ def check_any_tainted_sinks(vars, pat):
 
     for sink in pat["sinks"]:
         if vars[sink]:
-            # For each tainted sink create 1 vuln
-            log.debug("Sink %s tainted by %s" % (sink, vars[sink][0]))
+            # For each tainted sink create as many vulns as there are sources tainting it!
+            tainting_sources = [src for src in vars[sink] if src in pat["sources"]]
+            log.debug("Sink %s tainted by %s" % (sink, ', '.join(tainting_sources)))
 
             # Getting source that tainted the sink from variables might be ass if the lists have more than 1 element? vvvv
             # The chains are built by appending to the end, hopefully the first element will always be the source
-            vuln = {
-                "vulnerability": pat["vulnerability"] + str(len(vulns) + 1),
-                "source": vars[sink][0],
-                "sink": sink,
-                "unsanitized flows": "yes", # TODO
-                "sanitized flows": [] # TODO
-            }
+            # EDIT: Nvm, we just need to fetch the sources from here. Order does not matter at all
+            for source in tainting_sources:
+                vuln = {
+                    "vulnerability": pat["vulnerability"] + '_' + str(len(vulns) + 1),
+                    "source": source,
+                    "sink": sink,
+                    "unsanitized flows": "yes", # TODO
+                    "sanitized flows": [] # TODO
+                }
 
-            vulns += [vuln]
+                vulns += [vuln]
 
     return vulns
 
