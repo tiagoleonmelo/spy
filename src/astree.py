@@ -33,6 +33,12 @@ sinks = {}
 global sans # In days like these, kids like you..
 sans = {}
 
+global san_flows
+san_flows = {}
+
+global SANITIZER_FUNCS
+SANITIZER_FUNCS = []
+
 class Node:
     """Tree Node. Contains the ast_type and all its attributes and children are stored in children.
 
@@ -174,7 +180,7 @@ class Node:
         """Taint every node that has been 'in contact' with a source.
         Build taint chains."""
 
-        global variables, sinks, sans
+        global variables, sinks, sans, san_flows
 
         # print(variables)
 
@@ -205,7 +211,15 @@ class Node:
                         variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
 
                         if child.attributes["id"] in sinks.keys(): # This is only needed because sometimes sinks arent functions
+                            # Whenever a sink occurs, we need to check if the tainters have been sanitized TODO
                             sinks[child.attributes["id"]] = variables[child.attributes["id"]]
+
+                            if t not in san_flows.keys():
+                                san_flows[t] = []
+                            
+                            if t in sans.keys():
+                                san_flows[t] += sans[t]
+                                san_flows[t] = list(set(san_flows[t]))
 
             elif self.ast_type == EXPR:
 
@@ -254,9 +268,17 @@ class Node:
                     for arg in self.children["args"]:
                         tainters = arg.is_tainted()
                         for t in tainters:
+                            # Whenever a sink is tainted, we need to check if the tainters have been sanitized TODO
                             sinks[function_name].extend(variables[t] + [t])
                             sinks[function_name] = list(set(sinks[function_name]))
-                    
+
+                            if t not in san_flows.keys():
+                                san_flows[t] = []
+
+                            if t in sans.keys():
+                                san_flows[t] += sans[t]
+                                san_flows[t] = list(set(san_flows[t]))
+                                                
                 elif function_name in sans.keys():
                     # We need to include that this function sanitized a flow.
                     # What should this struct look like?..
@@ -265,6 +287,11 @@ class Node:
                     for arg in self.children["args"]:
                         tainters = arg.is_tainted()
                         for t in tainters:
+                            if t not in sans.keys():
+                                sans[t] = []
+                            sans[t] += [function_name]
+                            sans[t] = list(set(sans[t]))
+
                             sans[function_name] += [t]
                             sans[function_name] = list(set(sans[function_name]))
 
@@ -328,12 +355,13 @@ class Node:
 
     def get_variables(self):
         """Return the global dictionary of variables"""
-        global variables, sinks, sans
-        return variables, sinks, sans
+        global variables, sinks, sans, san_flows
+        return variables, sinks, sans, san_flows
 
     def reset_variables(self):
         """Resets variables from other traversals"""
-        global variables, sinks, sans
+        global variables, sinks, sans, san_flows
         variables = {}
         sinks = {}
         sans = {}
+        san_flows = {}

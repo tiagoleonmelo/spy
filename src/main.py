@@ -13,7 +13,7 @@ OUTPUT_DIR = 'output/'
 log = Logger.get_logger("spy")
 
 
-def check_any_tainted_sinks(vars, sans, pat):
+def check_any_tainted_sinks(vars, san_flows, pat):
     """Given the final state of a tree traversal and a pattern, checks which sinks have been tainted.
     Returns a list of dictionaries for every vulnerability found"""
 
@@ -27,15 +27,18 @@ def check_any_tainted_sinks(vars, sans, pat):
             log.debug("Sink %s tainted by %s" %
                       (sink, ', '.join(tainting_sources)))
 
-            # Get every sanitizer that might have occurred in the chain of contamination
             flows = []
+            tainted_flows = vars[sink].copy()
 
-            for san in pat['sanitizers']:
-                # Strip sans[san] of sources (sanitizing sources doesnt do anything?)
-                sans[san] = [s for s in sans[san] if s not in pat["sources"]]
+            for tainter in vars[sink]:
+                if tainter not in pat["sources"] and tainter in san_flows.keys():
+                    tmp = [s for s in san_flows[tainter] if s]
+                    if tmp:
+                        flows += [tmp]
+                        tainted_flows.remove(tainter)
 
-                if bool(set(sans[san]) & set(vars[sink])): # Little trick to check if two lists have any elements in common
-                    flows += [san]
+            # Check if all flows have been sanitized
+            unsan_flows = "no" if len(tainted_flows) == 0 else "yes"
 
             # We just need to fetch the sources from here, order does not matter
             for source in tainting_sources:
@@ -43,8 +46,8 @@ def check_any_tainted_sinks(vars, sans, pat):
                     "vulnerability": pat["vulnerability"] + '_' + str(len(vulns) + 1),
                     "source": source,
                     "sink": sink,
-                    "unsanitized flows": "yes",  # TODO
-                    "sanitized flows": flows  # TODO
+                    "unsanitized flows": unsan_flows,
+                    "sanitized flows": flows
                 }
 
                 vulns += [vuln]
@@ -72,7 +75,7 @@ def main(tree, patterns, program_name):
         log.debug("Successfully extracted variables and sinks from program")
 
         # Fetch variables program - global state of the program
-        variables, sinks, sans = root.get_variables()
+        variables, sinks, sans, san_flows = root.get_variables()
         log.debug(variables)
         log.debug(sinks)
         log.debug(sans)
@@ -84,7 +87,7 @@ def main(tree, patterns, program_name):
         log.debug(sans)
 
         # Check if there are any tainted sinks and append them to vuln list
-        output += check_any_tainted_sinks(sinks, sans, pattern)
+        output += check_any_tainted_sinks(sinks, san_flows, pattern)
 
     # Write output to file
     with open(os.path.join(OUTPUT_DIR, program_name + ".output.json"), "w") as output_file:

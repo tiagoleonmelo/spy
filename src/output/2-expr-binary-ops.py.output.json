@@ -19,7 +19,9 @@
         "sink": "e",
         "unsanitized flows": "yes",
         "sanitized flows": [
-            "s"
+            [
+                "s"
+            ]
         ]
     }
 ]

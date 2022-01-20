@@ -5,7 +5,9 @@
         "sink": "c",
         "unsanitized flows": "yes",
         "sanitized flows": [
-            "f"
+            [
+                "f"
+            ]
         ]
     },
     {
@@ -14,7 +16,9 @@
         "sink": "e",
         "unsanitized flows": "yes",
         "sanitized flows": [
-            "f"
+            [
+                "f"
+            ]
         ]
     },
     {
@@ -23,8 +27,10 @@
         "sink": "c",
         "unsanitized flows": "yes",
         "sanitized flows": [
-            "e",
-            "d"
+            [
+                "d",
+                "e"
+            ]
         ]
     }
 ]
