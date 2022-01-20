@@ -8,20 +8,21 @@ ASSIGN = "Assign"
 IF = "If"
 WHILE = "While"
 #
-BINOP= "BinOp"
+BINOP = "BinOp"
 CALL = "Call"
 COMPARE = "Compare"
 ATTRIBUTE = "Attribute"
 #
-NAME="Name"
-CONSTANT="Constant"
+NAME = "Name"
+CONSTANT = "Constant"
 
-l1=[ASSIGN,EXPR,IF,WHILE]
-l2=[BINOP,CALL,COMPARE,ATTRIBUTE]
-l3=[NAME,CONSTANT]
+l1 = [ASSIGN, EXPR, IF, WHILE]
+l2 = [BINOP, CALL, COMPARE, ATTRIBUTE]
+l3 = [NAME, CONSTANT]
 
 global variables
 variables = {}
+
 
 class Node:
     """Tree Node. Contains the ast_type and all its attributes and children are stored in children.
@@ -105,9 +106,10 @@ class Node:
 
     def print_tree(self):
         """Print the tree."""
-        
+
         print('+', end=' ')
-        print(self.ast_type, sum([len(value) for _, value in self.children.items()]))
+        print(self.ast_type, sum([len(value)
+                                  for _, value in self.children.items()]))
         pprint.pprint(self.attributes)
 
         for key, child in self.children.items():
@@ -139,32 +141,33 @@ class Node:
 
         global variables
 
-        #print(variables)
+        # print(variables)
 
         if self.ast_type in l1:
 
             if self.ast_type == ASSIGN:
 
+                # Right hand side of assignment
                 val = self.children["value"][0]
-
-                node_type=val.attributes["ast_type"]
-                if node_type in l2:
+                node_type = val.attributes["ast_type"]
+                
+                if node_type in l2: # Do we need this if? Cant val be an Expr?
                     val.taint_nodes()
 
                 tainter = val.is_tainted()
 
                 if tainter:
-                    # Taint the left-hand side
+                    # If value is tainted, taint the left-hand side (targets)
                     for child in self.children["targets"]:
                         #print(child.attributes["id"]+' contaminated by '+tainter[0])
-                        #NOT GUARANTEED THAT TARGETS IS L3!
-                        for x in tainter:
-                            variables[child.attributes["id"]].extend(variables[x])
-                        variables[child.attributes["id"]] += [y for y in tainter]
 
-                        # Clean up spaghetti code
+                        # Tainting the targets with all the children of value
+                        # NOT GUARANTEED THAT TARGETS IS L3!
+                        for t in tainter:
+                            variables[child.attributes["id"]].extend(variables[t] + [t])
+
+                        # Clean up possible duplicates
                         variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
-
 
             elif self.ast_type == EXPR:
 
@@ -180,24 +183,44 @@ class Node:
                 pass
 
         elif self.ast_type in l2:
-            
+
             if self.ast_type == CALL:
-                #NOT GUARANTEED THAT FUNC IS L3!
+                # NOT GUARANTEED THAT FUNC IS L3!
+                # We need to know if this is a sink or a san function
                 victim = self.attributes["func"]["id"]
-                #tainters->args, can be multiple
+                # tainters->args, can be multiple
                 for arg in self.children["args"]:
-                    tainters=arg.is_tainted()
+                    tainters = arg.is_tainted()
                     if tainters:
-                        #if one arg is tainted taint the others, and taint victim
-                        for x in tainters:
-                            variables[victim].extend(variables[x])
-                        variables[victim] += [y for y in tainters]
+                        # if one arg is tainted taint the others, and taint victim -> I dont think we should taint the victim.
+                        # A function can be tainted but I dont think it should be able to taint other elements:
+                        #
+                        #   a = f(b, c) // where b is a source
+                        #   r = f(w, q) // where there are no sources
+                        #
+                        # If we consider f gets tainted in the first line r, w and q will be tainted in the second one.
+                        # OTOH if f does not get tainted, how will we spot tainted sinks?
+                        #
+                        # I want functions to get tainted, but I dont want them to taint other things.
+                        #
+                        # Idea: what if we NEVER taint functions, but we have an additional data structure keeping tabs
+                        # of the sinks that have been tainted?
+                        #
+                        # I think this is good. Depois no fim não fazemos nenhum pass pelo global variables, mas sim
+                        # por esta struct que só tem os sinks q foram tainted e por quem
+                        # We have a structure to keep record of the tainting, and a structure to keep record of the sinks.
+                        #
+                        # Its hard though.
+                        # Yolo, committing before breaking changes.
+                        for t in tainters:
+                            variables[victim].extend(variables[t] + [t])
+                        #variables[victim] += [y for y in tainters]
                         variables[victim] = list(set(variables[victim]))
-            
+
             elif self.ast_type == BINOP:
-                #...
+                # ...
                 pass
-            
+
             elif self.ast_type == ATTRIBUTE:
                 pass
             elif self.ast_type == COMPARE:
@@ -207,8 +230,8 @@ class Node:
                 pass
             elif self.ast_type == CONSTANT:
                 pass
-        
-        #right?
+
+        # right?
         for key, value in self.children.items():
             [child.taint_nodes() for child in value]
 
@@ -218,7 +241,8 @@ class Node:
             for child in value:
                 if "id" in child.attributes.keys():
                     variables[child.attributes["id"]] += tainter
-                    variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
+                    variables[child.attributes["id"]] = list(
+                        set(variables[child.attributes["id"]]))
 
                 child.taint_children(tainter)
 
@@ -227,7 +251,7 @@ class Node:
 
         global variables
 
-        #print(self.ast_type)
+        # print(self.ast_type)
 
         # Check my own id and query variables dict
         node_id = self.attributes["id"] if "id" in self.attributes else None
@@ -237,13 +261,14 @@ class Node:
             return variables[node_id] + [node_id]
 
         # Get all children bundled into one single array
-        children_array = [child.is_tainted() for key, value in self.children.items() for child in value]
+        children_array = [child.is_tainted()
+                          for key, value in self.children.items() for child in value]
 
         # Merge all arrays into a single array (from https://stackoverflow.com/a/716482)
         # This will be problematic once multiple children have been tainted by the same source! => Duplicate entries
-        # Since order does not really matter, we can just `set` it
+        # Since order does not really matter, maybe we can just `set` it
         merged = list(set(itertools.chain.from_iterable(children_array)))
-        
+
         # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !! IMPORTANT: tell joao
         return merged
 
@@ -256,4 +281,3 @@ class Node:
         """Resets variables from other traversals"""
         global variables
         variables = {}
-

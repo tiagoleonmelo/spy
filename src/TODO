@@ -1,0 +1,6 @@
+TODO:
+
+Automate testing
+Write output to the right file
+Add only the right number of variables being tainted (stop relying on set())
+Sanitization

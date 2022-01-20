@@ -27,9 +27,7 @@ def check_any_tainted_sinks(vars, pat):
             log.debug("Sink %s tainted by %s" %
                       (sink, ', '.join(tainting_sources)))
 
-            # Getting source that tainted the sink from variables might be ass if the lists have more than 1 element? vvvv
-            # The chains are built by appending to the end, hopefully the first element will always be the source
-            # EDIT: Nvm, we just need to fetch the sources from here. Order does not matter at all
+            # We just need to fetch the sources from here, order does not matter
             for source in tainting_sources:
                 vuln = {
                     "vulnerability": pat["vulnerability"] + '_' + str(len(vulns) + 1),
@@ -129,10 +127,10 @@ if __name__ == "__main__":
                 out_reference_file = sorted(json.loads(f2.read()), key=lambda x: x["vulnerability"])
 
             if not (out_file == out_reference_file):
-                log.warn("Files not identical! Check %s" % initial)
+                log.warn("Files not identical! Check %s\n" % initial)
                 perfect = False
             else:
-                log.info("Files %s identical" % initial)
+                log.info("Files %s identical\n" % initial)
 
         if perfect:
             log.info("All files identical ✅")
