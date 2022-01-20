@@ -1,0 +1,62 @@
+1	module
+2:
+assign
+expr
+
+assign targets: Name (Store) f
+assign value: Constant f
+assign value: Name load
+assign value: Call nf
+
+Call-func name load f
+
+Expr value: Call nf
+
+Call-func name load f
+Call args could be empty b() or multiple (a,c):
+Call- args Name load f
+Call-args Constant
+Call-args BinOp
+Call-args Call (recursive)
+
+BinOp
+	left
+	op
+	right
+
+op-add, sub
+left,right-Constant, name load, BinOp (recursive binop...)
+-----
+recusrive call, recusrive bin op..
+-----
+The mandatory language constructs are those that appear in the slices provided, and include:
+ assignments, binary operations, function calls, condition test and while loop.
+
+Obs: Using the terms in the definition of the Python's AST module, the mandatory constructs are 
+Literals (Constant), Variables (Name), Expressions (Expr, BinOp, Compare, Call, Attribute), 
+Statements (Assign), Control flow (If and While).
+------
+Lvl1 module
+
+Lvl2: Assign, Expr, if, while
+
+Assign- 1 value expr -> nf:binop,call or f:name,constant
+	1+ targets expr-> usually final, name store
+
+Expr, 1 value expr- mostly call?
+
+if todo
+
+while todo
+----
+Lvl3: expr's
+BinOp 	op operator
+	left/right expr (recursivo)
+
+Call	func expr (recursivo)
+	1+ args expr (recursivo)
+
+Compare todo
+
+Attribute todo
+
