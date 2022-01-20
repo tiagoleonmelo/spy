@@ -53,6 +53,7 @@ def main(tree, patterns, program_name):
     # root.taint_nodes()
 
     for pattern in patterns:
+        log.debug("Analysing pattern %s" % pattern["vulnerability"])
         # Clean previous variables
         root.reset_variables()
 

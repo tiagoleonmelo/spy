@@ -2,11 +2,23 @@ import itertools
 import pprint
 
 DISCARD = ["lineno", "end_lineno", "col_offset", "end_col_offset"]
+#
 EXPR = "Expr"
 ASSIGN = "Assign"
 IF = "If"
 WHILE = "While"
+#
+BINOP= "BinOp"
 CALL = "Call"
+COMPARE = "Compare"
+ATTRIBUTE = "Attribute"
+#
+NAME="Name"
+CONSTANT="Constant"
+
+l1=[ASSIGN,EXPR,IF,WHILE]
+l2=[BINOP,CALL,COMPARE,ATTRIBUTE]
+l3=[NAME,CONSTANT]
 
 global variables
 variables = {}
@@ -128,74 +140,75 @@ class Node:
         global variables
 
         #print(variables)
-        
-        if self.ast_type == ASSIGN:
-            # If the right-hand part of this assignment is tainted, the left one is now tainted
-            val = self.children["value"][0]
-            #print(val.attributes)
 
-            tainter = val.is_tainted()
+        if self.ast_type in l1:
 
-            if tainter:
-                # Taint the entire right-hand side, their children included
-                val.taint_children(tainter)
+            if self.ast_type == ASSIGN:
 
-                # Taint the left-hand side
-                for child in self.children["targets"]:
-                    #print(child.attributes["id"]+' contaminated by '+tainter[0])
-                    variables[child.attributes["id"]] += tainter
+                val = self.children["value"][0]
 
-                    # Taint the targets with val's children
-                    # variables[child.attributes["id"]] += [val.children["func"][0].attributes["id"]] # + variables[val.children["func"][0].attributes["id"]]
+                node_type=val.attributes["ast_type"]
+                if node_type in l2:
+                    val.taint_nodes()
 
-                    # Clean up spaghetti code
-                    variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
+                tainter = val.is_tainted()
+
+                if tainter:
+                    # Taint the left-hand side
+                    for child in self.children["targets"]:
+                        #print(child.attributes["id"]+' contaminated by '+tainter[0])
+                        #NOT GUARANTEED THAT TARGETS IS L3!
+                        for x in tainter:
+                            variables[child.attributes["id"]].extend(variables[x])
+                        variables[child.attributes["id"]] += [y for y in tainter]
+
+                        # Clean up spaghetti code
+                        variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
 
 
+            elif self.ast_type == EXPR:
 
-        elif self.ast_type == EXPR:
+                # expr is always a value..
+                exp = self.children["value"][0]
 
-            # expr is always a value..
-            exp = self.children["value"][0]
+                exp.taint_nodes()
 
-            #impossible to make general case? switch (type) idk
+            elif self.ast_type == IF:
+                pass
 
-            exp_type = exp.attributes["ast_type"]
+            elif self.ast_type == WHILE:
+                pass
+
+        elif self.ast_type in l2:
             
-            if exp_type=='Call':
-                #func is always one thing
-                victim = exp.attributes["func"]["id"]
+            if self.ast_type == CALL:
+                #NOT GUARANTEED THAT FUNC IS L3!
+                victim = self.attributes["func"]["id"]
                 #tainters->args, can be multiple
-
-                for arg in exp.children["args"]:
-                    if arg.is_tainted():
-                        #se varias argumentos da funçao contaminarem estou a adiciona los todos, but is that even bad? -> No
-                        # We must include the chain of the tainted variable here though
-                        variables[victim] += variables[arg.attributes["id"]] + [arg.attributes["id"]]
+                for arg in self.children["args"]:
+                    tainters=arg.is_tainted()
+                    if tainters:
+                        #if one arg is tainted taint the others, and taint victim
+                        for x in tainters:
+                            variables[victim].extend(variables[x])
+                        variables[victim] += [y for y in tainters]
                         variables[victim] = list(set(variables[victim]))
-                
-            else:
-                print(':/')
-
-        elif self.ast_type == IF:
-            pass
-
-        elif self.ast_type == WHILE:
-            pass
-
-        elif self.ast_type == CALL:
-            #func is always one thing
-            victim = self.attributes["func"]["id"]
-            #tainters->args, can be multiple
-
-            for arg in self.children["args"]:
-                if arg.is_tainted():
-                    #se varias argumentos da funçao contaminarem estou a adiciona los todos, but is that even bad? -> No
-                    # We must include the chain of the tainted variable here though
-                    print(arg.attributes, arg.ast_type)
-                    variables[victim] += variables[arg.attributes["id"]] + [arg.attributes["id"]]
-                    variables[victim] = list(set(variables[victim]))
-
+            
+            elif self.ast_type == BINOP:
+                #...
+                pass
+            
+            elif self.ast_type == ATTRIBUTE:
+                pass
+            elif self.ast_type == COMPARE:
+                pass
+        elif self.ast_type in l3:
+            if self.ast_type == NAME:
+                pass
+            elif self.ast_type == CONSTANT:
+                pass
+        
+        #right?
         for key, value in self.children.items():
             [child.taint_nodes() for child in value]
 
@@ -233,24 +246,6 @@ class Node:
         
         # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !! IMPORTANT: tell joao
         return merged
-
-    def handle_call(self, val):
-        """I dont give a fuck, special-casing Call ast_types.
-        Calls are tricky since two very important things might be going on whenever there's a call:
-            * Sanitization functions
-            * Sinks
-        
-        """
-
-        # Func is always one thing
-        function = val.attributes["func"]["id"]
-
-        #tainters->args, can be multiple
-
-        for arg in val.children["args"]:
-            if arg.is_tainted():
-                # We must include the chain of the tainted variable here though
-                variables[function] += variables[arg.attributes["id"]] + [arg.attributes["id"]]
 
     def get_variables(self):
         """Return the global dictionary of variables"""
