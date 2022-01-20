@@ -13,30 +13,51 @@ OUTPUT_DIR = 'output/'
 log = Logger.get_logger("spy")
 
 
-def check_any_tainted_sinks(vars, pat):
+def check_any_tainted_sinks(vars, san_flows, inits, pat):
     """Given the final state of a tree traversal and a pattern, checks which sinks have been tainted.
     Returns a list of dictionaries for every vulnerability found"""
 
     vulns = []
+    print(san_flows, vars)
 
     for sink in pat["sinks"]:
         if vars[sink]:
             # For each tainted sink create as many vulns as there are sources tainting it!
             tainting_sources = sorted(
-                list(set([src for src in vars[sink] if src in pat["sources"]])))
+                list(set([src for src in vars[sink] if src in pat["sources"] or (src in inits and not inits[src])])))
             log.debug("Sink %s tainted by %s" %
                       (sink, ', '.join(tainting_sources)))
 
-            # Getting source that tainted the sink from variables might be ass if the lists have more than 1 element? vvvv
-            # The chains are built by appending to the end, hopefully the first element will always be the source
-            # EDIT: Nvm, we just need to fetch the sources from here. Order does not matter at all
+            # We just need to fetch the sources from here, order does not matter
             for source in tainting_sources:
+
+                flows = []
+                tainted_flows = vars[sink].copy()
+
+                print(pat["vulnerability"] + '_' + str(len(vulns) + 1), tainting_sources)
+
+                for tainter in vars[sink]:
+                    print(tainter)
+                    # If the tainter is an uninit var, skip any sanitization flows
+                    if tainter in inits and not inits[tainter]:
+                        continue
+
+                    # If the tainter is not a source and it has a sanitization flow
+                    if tainter not in pat["sources"] and tainter in san_flows.keys():
+                        tmp = [s for s in san_flows[tainter] if s]
+                        if tmp:
+                            flows += [tmp]
+                            tainted_flows.remove(tainter)
+
+                # Check if all flows have been sanitized
+                unsan_flows = "no" if len(tainted_flows) == 0 else "yes"
+
                 vuln = {
                     "vulnerability": pat["vulnerability"] + '_' + str(len(vulns) + 1),
                     "source": source,
                     "sink": sink,
-                    "unsanitized flows": "yes",  # TODO
-                    "sanitized flows": []  # TODO
+                    "unsanitized flows": unsan_flows,
+                    "sanitized flows": flows
                 }
 
                 vulns += [vuln]
@@ -53,23 +74,31 @@ def main(tree, patterns, program_name):
     # root.taint_nodes()
 
     for pattern in patterns:
+        log.debug("Analysing pattern %s" % pattern["vulnerability"])
         # Clean previous variables
         root.reset_variables()
 
         # Get program variables and taint the sources
         root.extract_variables(pattern)
-        log.debug("Successfully extracted variables from program")
+        root.extract_sinks(pattern)
+        root.extract_sans(pattern)
+        root.init_variables()
+        log.debug("Successfully extracted variables and sinks from program")
 
         # Fetch variables program - global state of the program
-        variables = root.get_variables()
+        variables, sinks, sans, san_flows, inits = root.get_variables()
         log.debug(variables)
+        log.debug(sinks)
+        log.debug(sans)
 
         # Traverse tree and taint variables that have been in contact with sources
         root.taint_nodes()
         log.debug(variables)
+        log.debug(sinks)
+        log.debug(sans)
 
         # Check if there are any tainted sinks and append them to vuln list
-        output += check_any_tainted_sinks(variables, pattern)
+        output += check_any_tainted_sinks(sinks, san_flows, inits, pattern)
 
     # Write output to file
     with open(os.path.join(OUTPUT_DIR, program_name + ".output.json"), "w") as output_file:
@@ -128,10 +157,10 @@ if __name__ == "__main__":
                 out_reference_file = sorted(json.loads(f2.read()), key=lambda x: x["vulnerability"])
 
             if not (out_file == out_reference_file):
-                log.warn("Files not identical! Check %s" % initial)
+                log.warn("Files not identical! Check %s\n" % initial)
                 perfect = False
             else:
-                log.info("Files %s identical" % initial)
+                log.info("Files %s identical\n" % initial)
 
         if perfect:
             log.info("All files identical ✅")
