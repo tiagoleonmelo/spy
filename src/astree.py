@@ -1,18 +1,22 @@
 import itertools
 import pprint
 
+# Attributes to discard from the given AST
 DISCARD = ["lineno", "end_lineno", "col_offset", "end_col_offset"]
-#
+
+# Level 1
 EXPR = "Expr"
 ASSIGN = "Assign"
 IF = "If"
 WHILE = "While"
-#
+
+# Level 2
 BINOP = "BinOp"
 CALL = "Call"
 COMPARE = "Compare"
 ATTRIBUTE = "Attribute"
-#
+
+# Level 3
 NAME = "Name"
 CONSTANT = "Constant"
 
@@ -23,6 +27,11 @@ l3 = [NAME, CONSTANT]
 global variables
 variables = {}
 
+global sinks
+sinks = {}
+
+global sans # In days like these, kids like you..
+sans = {}
 
 class Node:
     """Tree Node. Contains the ast_type and all its attributes and children are stored in children.
@@ -135,11 +144,37 @@ class Node:
 
         return variables
 
+    def extract_sinks(self, pattern):
+        """Returns a dictionary with sink names as keys and an empty list as value.
+        This is meant to be called after extract_variables."""
+        global variables, sinks
+
+        # Add sinks to their own struct
+        sinks = {key: [] for key, _ in variables.items() if key in pattern['sinks']}
+
+        # Remove sinks from dictionary TODO
+        # [variables.pop(key) for key, _ in sinks.items()]
+
+        return sinks
+
+    def extract_sans(self, pattern):
+        """Returns a dictionary with sans names as keys and an empty list as value.
+        This is meant to be called after extract_variables."""
+        global variables, sans
+
+        # Add sans to their own struct
+        sans = {key: [] for key, _ in variables.items() if key in pattern['sanitizers']}
+
+        # Remove sans from dictionary TODO
+        # [variables.pop(key) for key, _ in sans.items()]
+
+        return sans
+
     def taint_nodes(self):
         """Taint every node that has been 'in contact' with a source.
         Build taint chains."""
 
-        global variables
+        global variables, sinks, sans
 
         # print(variables)
 
@@ -169,6 +204,9 @@ class Node:
                         # Clean up possible duplicates
                         variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
 
+                        if child.attributes["id"] in sinks.keys(): # This is only needed because sometimes sinks arent functions
+                            sinks[child.attributes["id"]] = variables[child.attributes["id"]]
+
             elif self.ast_type == EXPR:
 
                 # expr is always a value..
@@ -186,36 +224,52 @@ class Node:
 
             if self.ast_type == CALL:
                 # NOT GUARANTEED THAT FUNC IS L3!
+                # If one arg is tainted taint the others, and taint victim -> I dont think we should taint the victim.
+                # A function can be tainted but I dont think it should be able to taint other elements:
+                #
+                #   a = f(b, c) // where b is a source
+                #   r = f(w, q) // where there are no sources
+                #
+                # If we consider f gets tainted in the first line r, w and q will be tainted in the second one.
+                # OTOH if f does not get tainted, how will we spot tainted sinks?
+                #
+                # I want functions to get tainted, but I dont want them to taint other things.
+                #
+                # Idea: what if we NEVER taint functions, but we have an additional data structure keeping tabs
+                # of the sinks that have been tainted?
+                #
+                # I think this is good. Depois no fim não fazemos nenhum pass pelo global variables, mas sim
+                # por esta struct que só tem os sinks q foram tainted e por quem
+                # We have a structure to keep record of the tainting, and a structure to keep record of the sinks.
+                #
+                # Its hard though.
+                # Yolo, committing before breaking changes.
+                #
+                # So, to taint we only read from `variables`, and at the end we only read from `sinks`
+                function_name = self.attributes["func"]["id"]
+
                 # We need to know if this is a sink or a san function
-                victim = self.attributes["func"]["id"]
-                # tainters->args, can be multiple
-                for arg in self.children["args"]:
-                    tainters = arg.is_tainted()
-                    if tainters:
-                        # if one arg is tainted taint the others, and taint victim -> I dont think we should taint the victim.
-                        # A function can be tainted but I dont think it should be able to taint other elements:
-                        #
-                        #   a = f(b, c) // where b is a source
-                        #   r = f(w, q) // where there are no sources
-                        #
-                        # If we consider f gets tainted in the first line r, w and q will be tainted in the second one.
-                        # OTOH if f does not get tainted, how will we spot tainted sinks?
-                        #
-                        # I want functions to get tainted, but I dont want them to taint other things.
-                        #
-                        # Idea: what if we NEVER taint functions, but we have an additional data structure keeping tabs
-                        # of the sinks that have been tainted?
-                        #
-                        # I think this is good. Depois no fim não fazemos nenhum pass pelo global variables, mas sim
-                        # por esta struct que só tem os sinks q foram tainted e por quem
-                        # We have a structure to keep record of the tainting, and a structure to keep record of the sinks.
-                        #
-                        # Its hard though.
-                        # Yolo, committing before breaking changes.
+                if function_name in sinks.keys():
+                    # Taint arguments mutually and then taint the sink with its arguments
+                    for arg in self.children["args"]:
+                        tainters = arg.is_tainted()
                         for t in tainters:
-                            variables[victim].extend(variables[t] + [t])
-                        #variables[victim] += [y for y in tainters]
-                        variables[victim] = list(set(variables[victim]))
+                            sinks[function_name].extend(variables[t] + [t])
+                            sinks[function_name] = list(set(sinks[function_name]))
+                    
+                elif function_name in sans.keys():
+                    # We need to include that this function sanitized a flow.
+                    # What should this struct look like?..
+                    # {san_func: san_var}? and in the end we check if any of the variables that tainted
+                    # a given sink has an entry in this dict?... might be...
+                    for arg in self.children["args"]:
+                        tainters = arg.is_tainted()
+                        for t in tainters:
+                            sans[function_name] += [t]
+                            sans[function_name] = list(set(sans[function_name]))
+
+                else: # If the function is neither a sink nor a san
+                    pass
 
             elif self.ast_type == BINOP:
                 # ...
@@ -274,10 +328,12 @@ class Node:
 
     def get_variables(self):
         """Return the global dictionary of variables"""
-        global variables
-        return variables
+        global variables, sinks, sans
+        return variables, sinks, sans
 
     def reset_variables(self):
         """Resets variables from other traversals"""
-        global variables
+        global variables, sinks, sans
         variables = {}
+        sinks = {}
+        sans = {}
