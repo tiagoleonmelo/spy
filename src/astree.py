@@ -36,8 +36,8 @@ sans = {}
 global san_flows
 san_flows = {}
 
-global SANITIZER_FUNCS
-SANITIZER_FUNCS = []
+global inits
+inits = {}
 
 class Node:
     """Tree Node. Contains the ast_type and all its attributes and children are stored in children.
@@ -176,23 +176,34 @@ class Node:
 
         return sans
 
+    def init_variables(self):
+        """Returns a dictionary with all variables in the program marked as uninitialized.
+        """
+        global variables, inits
+
+        inits = {var: False for var, value in variables.items()}
+
+        return inits
+
     def taint_nodes(self):
         """Taint every node that has been 'in contact' with a source.
         Build taint chains."""
 
         global variables, sinks, sans, san_flows
 
-        # print(variables)
-
         if self.ast_type in l1:
 
             if self.ast_type == ASSIGN:
+
+                # Declare target as initialized
+                for child in self.children["targets"]:
+                    inits[child.attributes["id"]] = True
 
                 # Right hand side of assignment
                 val = self.children["value"][0]
                 node_type = val.attributes["ast_type"]
                 
-                if node_type in l2: # Do we need this if? Cant val be an Expr?
+                if node_type in l2:
                     val.taint_nodes()
 
                 tainter = val.is_tainted()
@@ -211,9 +222,9 @@ class Node:
                         variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
 
                         if child.attributes["id"] in sinks.keys(): # This is only needed because sometimes sinks arent functions
-                            # Whenever a sink occurs, we need to check if the tainters have been sanitized TODO
+                            # Whenever a sink occurs, we need to check if the tainters have been sanitized
                             sinks[child.attributes["id"]] = variables[child.attributes["id"]]
-
+                            
                             if t not in san_flows.keys():
                                 san_flows[t] = []
                             
@@ -261,6 +272,9 @@ class Node:
                 #
                 # So, to taint we only read from `variables`, and at the end we only read from `sinks`
                 function_name = self.attributes["func"]["id"]
+                
+                # Removing functions from initializations
+                inits.pop(function_name, None)
 
                 # We need to know if this is a sink or a san function
                 if function_name in sinks.keys():
@@ -268,7 +282,7 @@ class Node:
                     for arg in self.children["args"]:
                         tainters = arg.is_tainted()
                         for t in tainters:
-                            # Whenever a sink is tainted, we need to check if the tainters have been sanitized TODO
+                            # Whenever a sink is tainted, we need to check if the tainters have been sanitized
                             sinks[function_name].extend(variables[t] + [t])
                             sinks[function_name] = list(set(sinks[function_name]))
 
@@ -289,6 +303,9 @@ class Node:
                         for t in tainters:
                             if t not in sans.keys():
                                 sans[t] = []
+
+                            # TODO dont sanitize uninit variables
+
                             sans[t] += [function_name]
                             sans[t] = list(set(sans[t]))
 
@@ -330,12 +347,14 @@ class Node:
     def is_tainted(self):
         """Returns whether this node has been tainted by one of its children, and who"""
 
-        global variables
-
-        # print(self.ast_type)
+        global variables, inits
 
         # Check my own id and query variables dict
         node_id = self.attributes["id"] if "id" in self.attributes else None
+
+        # If I have not been initialized, I am source
+        if node_id in inits and not inits[node_id]:
+            return [node_id]
 
         # If my ID is in the variables dict (which should be unless None) and it has a non-empty list, I'm tainted
         if node_id in variables and variables[node_id]:
@@ -355,13 +374,14 @@ class Node:
 
     def get_variables(self):
         """Return the global dictionary of variables"""
-        global variables, sinks, sans, san_flows
-        return variables, sinks, sans, san_flows
+        global variables, sinks, sans, san_flows, inits
+        return variables, sinks, sans, san_flows, inits
 
     def reset_variables(self):
         """Resets variables from other traversals"""
-        global variables, sinks, sans, san_flows
+        global variables, sinks, sans, san_flows, inits
         variables = {}
         sinks = {}
         sans = {}
         san_flows = {}
+        inits = {}

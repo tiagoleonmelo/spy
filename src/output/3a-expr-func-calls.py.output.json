@@ -26,11 +26,6 @@
         "source": "b",
         "sink": "c",
         "unsanitized flows": "yes",
-        "sanitized flows": [
-            [
-                "d",
-                "e"
-            ]
-        ]
+        "sanitized flows": []
     }
 ]
