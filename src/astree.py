@@ -44,6 +44,10 @@ san_flows = {}
 global inits
 inits = {}
 
+# Static list of sanitizing functions. You would think sans.keys() would always equal this. Yes..
+global sanitizers
+sanitizers = []
+
 class Node:
     """Tree Node. Contains the ast_type and all its attributes and children are stored in children.
 
@@ -161,7 +165,7 @@ class Node:
         global variables, sinks
 
         # Add sinks to their own struct
-        sinks = {key: [] for key, _ in variables.items() if key in pattern['sinks']}
+        sinks = {key: [] for key in pattern['sinks']}
 
         # Remove sinks from dictionary TODO
         # [variables.pop(key) for key, _ in sinks.items()]
@@ -171,10 +175,11 @@ class Node:
     def extract_sans(self, pattern):
         """Returns a dictionary with sans names as keys and an empty list as value.
         This is meant to be called after extract_variables."""
-        global variables, sans
+        global variables, sans, sanitizers
 
         # Add sans to their own struct
-        sans = {key: [] for key, _ in variables.items() if key in pattern['sanitizers']}
+        sans = {key: [] for key in pattern['sanitizers']}
+        sanitizers = pattern['sanitizers'].copy()
 
         # Remove sans from dictionary TODO
         # [variables.pop(key) for key, _ in sans.items()]
@@ -194,7 +199,7 @@ class Node:
         """Taint every node that has been 'in contact' with a source.
         Build taint chains."""
 
-        global variables, sinks, sans, san_flows
+        global variables, sinks, sans, san_flows, sanitizers
 
         if self.ast_type in l1:
 
@@ -223,19 +228,23 @@ class Node:
                         for t in tainter:
                             variables[child.attributes["id"]].extend(variables[t] + [t])
 
+                            if child.attributes["id"] in sinks.keys():
+                                # This is only needed because sometimes sinks arent functions
+                                # Whenever a sink gets tainted, we need to check if the tainters have been sanitized
+                                sinks[child.attributes["id"]] = variables[child.attributes["id"]]
+                                
+                                if t not in san_flows.keys():
+                                    san_flows[t] = []
+                                
+                                if t in sans.keys():
+                                    san_flows[t] += sans[t]
+                                    san_flows[t] = list(set(san_flows[t]))
+                                    print(sans[t])
+
+
                         # Clean up possible duplicates
                         variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
 
-                        if child.attributes["id"] in sinks.keys(): # This is only needed because sometimes sinks arent functions
-                            # Whenever a sink occurs, we need to check if the tainters have been sanitized
-                            sinks[child.attributes["id"]] = variables[child.attributes["id"]]
-                            
-                            if t not in san_flows.keys():
-                                san_flows[t] = []
-                            
-                            if t in sans.keys():
-                                san_flows[t] += sans[t]
-                                san_flows[t] = list(set(san_flows[t]))
 
             elif self.ast_type == EXPR:
 
@@ -277,13 +286,13 @@ class Node:
                 #
                 # So, to taint we only read from `variables`, and at the end we only read from `sinks`
                 function_name = self.attributes["func"]["id"]
+                print(sans)
                 
                 # Removing functions from initializations
                 inits.pop(function_name, None)
 
                 # We need to know if this is a sink or a san function
                 if function_name in sinks.keys():
-                    # Taint arguments mutually and then taint the sink with its arguments
                     for arg in self.children["args"]:
                         tainters = arg.is_tainted()
                         for t in tainters:
@@ -298,7 +307,7 @@ class Node:
                                 san_flows[t] += sans[t]
                                 san_flows[t] = list(set(san_flows[t]))
                                                 
-                elif function_name in sans.keys():
+                elif function_name in sanitizers:
                     # We need to include that this function sanitized a flow.
                     # What should this struct look like?..
                     # {san_func: san_var}? and in the end we check if any of the variables that tainted
@@ -312,8 +321,8 @@ class Node:
                             sans[t] += [function_name]
                             sans[t] = list(set(sans[t]))
 
-                            sans[function_name] += [t]
-                            sans[function_name] = list(set(sans[function_name]))
+                            #sans[function_name] += [t]
+                            #sans[function_name] = list(set(sans[function_name]))
 
                 else: # If the function is neither a sink nor a san
                     pass
@@ -382,9 +391,10 @@ class Node:
 
     def reset_variables(self):
         """Resets variables from other traversals"""
-        global variables, sinks, sans, san_flows, inits
+        global variables, sinks, sans, san_flows, inits, sanitizers
         variables = {}
         sinks = {}
         sans = {}
         san_flows = {}
         inits = {}
+        sanitizers = []
