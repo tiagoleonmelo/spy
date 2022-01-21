@@ -235,11 +235,12 @@ class Node:
                                 
                                 if t not in san_flows.keys():
                                     san_flows[t] = []
+
+                                san_flows[t].append([])
                                 
                                 if t in sans.keys():
-                                    san_flows[t] += sans[t]
-                                    san_flows[t] = list(set(san_flows[t]))
-                                    print(sans[t])
+                                    san_flows[t][-1] += sans[t]
+                                    san_flows[t][-1] = list(set(san_flows[t][-1]))
 
 
                         # Clean up possible duplicates
@@ -293,19 +294,24 @@ class Node:
 
                 # We need to know if this is a sink or a san function
                 if function_name in sinks.keys():
+                    print("entering " + function_name)
                     for arg in self.children["args"]:
                         tainters = arg.is_tainted()
                         for t in tainters:
                             # Whenever a sink is tainted, we need to check if the tainters have been sanitized
                             sinks[function_name].extend(variables[t] + [t])
                             sinks[function_name] = list(set(sinks[function_name]))
+                            print("SINKS", sinks, san_flows)
 
                             if t not in san_flows.keys():
                                 san_flows[t] = []
 
+                            # The same var might have multiple sanitization flows. (example 3a)
+                            san_flows[t].append([])
+
                             if t in sans.keys():
-                                san_flows[t] += sans[t]
-                                san_flows[t] = list(set(san_flows[t]))
+                                san_flows[t][-1] += sans[t]
+                                san_flows[t][-1] = list(set(san_flows[t][-1]))
                                                 
                 elif function_name in sanitizers:
                     # We need to include that this function sanitized a flow.
@@ -315,6 +321,7 @@ class Node:
                     for arg in self.children["args"]:
                         tainters = arg.is_tainted()
                         for t in tainters:
+                            print(t)
                             if t not in sans.keys():
                                 sans[t] = []
 

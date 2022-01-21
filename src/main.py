@@ -41,10 +41,12 @@ def check_any_tainted_sinks(vars, san_flows, inits, pat):
                     if tainter not in pat["sources"] and tainter in san_flows.keys():
                         tmp = [s for s in san_flows[tainter] if s]
                         # The flow is only valid if it matches the flow of the source (idk maybe)
+                        print("tmp", tmp)
                         if tmp and (source in san_flows) and (san_flows[source] == tmp):
                             flows += [tmp]
                             tainted_flows.remove(tainter)
 
+                print("flows", flows)
                 # Check if all flows have been sanitized
                 unsan_flows = "no" if len(tainted_flows) == 0 else "yes"
 
