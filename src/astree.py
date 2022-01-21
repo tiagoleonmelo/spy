@@ -24,18 +24,23 @@ l1 = [ASSIGN, EXPR, IF, WHILE]
 l2 = [BINOP, CALL, COMPARE, ATTRIBUTE]
 l3 = [NAME, CONSTANT]
 
+# Keep tab of what variables tainted each other
 global variables
 variables = {}
 
+# Keep tab of tainted sinks
 global sinks
 sinks = {}
 
+# Keep tab of which variables have been sanitized
 global sans # In days like these, kids like you..
 sans = {}
 
+# Keep tab of the sanitization flows that have occurred whenever a sink is reached
 global san_flows
 san_flows = {}
 
+# Keep tab of what variables have been initialized
 global inits
 inits = {}
 
@@ -303,8 +308,6 @@ class Node:
                         for t in tainters:
                             if t not in sans.keys():
                                 sans[t] = []
-
-                            # TODO dont sanitize uninit variables
 
                             sans[t] += [function_name]
                             sans[t] = list(set(sans[t]))

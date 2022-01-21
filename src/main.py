@@ -18,7 +18,7 @@ def check_any_tainted_sinks(vars, san_flows, inits, pat):
     Returns a list of dictionaries for every vulnerability found"""
 
     vulns = []
-    print(san_flows, vars)
+    #print(san_flows, vars)
 
     for sink in pat["sinks"]:
         if vars[sink]:
@@ -34,18 +34,14 @@ def check_any_tainted_sinks(vars, san_flows, inits, pat):
                 flows = []
                 tainted_flows = vars[sink].copy()
 
-                print(pat["vulnerability"] + '_' + str(len(vulns) + 1), tainting_sources)
+                #print(pat["vulnerability"] + '_' + str(len(vulns) + 1), source, tainted_flows, san_flows, tainting_sources)
 
                 for tainter in vars[sink]:
-                    print(tainter)
-                    # If the tainter is an uninit var, skip any sanitization flows
-                    if tainter in inits and not inits[tainter]:
-                        continue
-
-                    # If the tainter is not a source and it has a sanitization flow
+                    # If the tainter is not a source (/has been initialized) and it has a sanitization flow
                     if tainter not in pat["sources"] and tainter in san_flows.keys():
                         tmp = [s for s in san_flows[tainter] if s]
-                        if tmp:
+                        # The flow is only valid if it matches the flow of the source (idk maybe)
+                        if tmp and source in san_flows and san_flows[source] == tmp:
                             flows += [tmp]
                             tainted_flows.remove(tainter)
 
