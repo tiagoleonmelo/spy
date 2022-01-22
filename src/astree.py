@@ -1,6 +1,8 @@
 import itertools
 import pprint
 
+from flow import Flow
+
 # Attributes to discard from the given AST
 DISCARD = ["lineno", "end_lineno", "col_offset", "end_col_offset"]
 
@@ -47,6 +49,10 @@ inits = {}
 # Static list of sanitizing functions. You would think sans.keys() would always equal this. Yes..
 global sanitizers
 sanitizers = []
+
+# Static list of sources
+global sources
+sources = []
 
 class Node:
     """Tree Node. Contains the ast_type and all its attributes and children are stored in children.
@@ -175,11 +181,12 @@ class Node:
     def extract_sans(self, pattern):
         """Returns a dictionary with sans names as keys and an empty list as value.
         This is meant to be called after extract_variables."""
-        global variables, sans, sanitizers
+        global variables, sans, sanitizers, sources
 
         # Add sans to their own struct
         sans = {key: [] for key in pattern['sanitizers']}
         sanitizers = pattern['sanitizers'].copy()
+        sources = pattern['sources'].copy()
 
         # Remove sans from dictionary TODO
         # [variables.pop(key) for key, _ in sans.items()]
@@ -216,28 +223,37 @@ class Node:
                 if node_type in l2:
                     val.taint_nodes()
 
-                tainter = val.is_tainted()
+                # Tainting flows is a recursive list of flows from a source
+                tainting_flows = val.is_tainted()
 
-                if tainter:
+                if tainting_flows:
+                    # If there are any, the left part is now tainted by all the variables in the flows
+                    tainters = self.get_tainters(tainting_flows)
+                    
                     # If value is tainted, taint the left-hand side (targets)
                     for child in self.children["targets"]:
-                        #print(child.attributes["id"]+' contaminated by '+tainter[0])
 
                         # Tainting the targets with all the children of value
                         # NOT GUARANTEED THAT TARGETS IS L3!
-                        for t in tainter:
+                        for t in tainters:
                             variables[child.attributes["id"]].extend(variables[t] + [t])
+                            sink = child.attributes["id"]
 
-                            if child.attributes["id"] in sinks.keys():
-                                # Whenever a sink gets tainted, we need to check if the tainters have been sanitized
-                                sinks[child.attributes["id"]] = variables[child.attributes["id"]]
+                            if sink in sinks.keys():
+                                # We need to get any sanitizing functions for each of the flows therein
+                                child.get_full_flow() # Should return all contamination chain + sanitizers
                                 
-                                # if t not in san_flows.keys():
-                                #     san_flows[t] = []
+                                # Whenever a sink gets tainted, we need to check if the tainters have been sanitized
+                                sinks[sink] = variables[sink]
+                                
+                                if t not in san_flows.keys():
+                                    san_flows[t] = []
 
-                                # if t in sans.keys():
-                                #     san_flows[t] += [sans[t]]
-                                    #san_flows[t] = list(set(san_flows[t]))
+                                if t in sans.keys():
+                                    san_flows[t] += [sans[t]]
+                                    san_flows[t] = list(set(san_flows[t]))
+
+                                #flows[sink] = Flow(source, tainters, sanitizers)
 
 
                         # Clean up possible duplicates
@@ -245,7 +261,6 @@ class Node:
 
 
             elif self.ast_type == EXPR:
-
                 # expr is always a value..
                 exp = self.children["value"][0]
 
@@ -291,18 +306,20 @@ class Node:
                 # We need to know if this is a sink or a san function
                 if function_name in sinks.keys():
                     for arg in self.children["args"]:
-                        tainters = arg.is_tainted()
-                        for t in tainters:
+                        tainting_flows = arg.is_tainted()
+                        for tf in tainting_flows:
                             # Whenever a sink is tainted, we need to check if the tainters have been sanitized
-                            sinks[function_name].extend(variables[t] + [t])
-                            sinks[function_name] = list(set(sinks[function_name]))
+                            print(variables, sinks, tf, tainting_flows)
+                            for t in tf:
+                                sinks[function_name].extend(variables[t] + [t])
+                                sinks[function_name] = list(set(sinks[function_name]))
 
                             # if t not in san_flows.keys():
                             #     san_flows[t] = []
 
                             # if t in sans.keys():
                             #     san_flows[t] += [sans[t]]
-                                #san_flows[t] = list(set(san_flows[t]))
+                            #     san_flows[t] = list(set(san_flows[t]))
                                                 
                 elif function_name in sanitizers:
                     # We need to include that this function sanitized a flow.
@@ -310,17 +327,17 @@ class Node:
                     # {san_func: san_var}? and in the end we check if any of the variables that tainted
                     # a given sink has an entry in this dict?... might be...
                     for arg in self.children["args"]:
-                        tainters = arg.is_tainted()
+                        tainting_flows = arg.is_tainted()
+                        for tf in tainting_flows:
+                            # If the argument is tainted, make sure we create a sanitization flow
+                            if tf and "id" in arg.attributes:
+                                arg_id = arg.attributes["id"]
 
-                        # If the argument is tainted, make sure we create a sanitization flow
-                        if tainters and "id" in arg.attributes:
-                            arg_id = arg.attributes["id"]
+                                if arg_id not in sans.keys():
+                                    sans[arg_id] = []
 
-                            if arg_id not in sans.keys():
-                                sans[arg_id] = []
-
-                            sans[arg_id] += [function_name]
-                            sans[arg_id] = list(set(sans[arg_id]))
+                                sans[arg_id] += [function_name]
+                                sans[arg_id] = list(set(sans[arg_id]))
 
                             #sans[function_name] += [t]
                             #sans[function_name] = list(set(sans[function_name]))
@@ -365,50 +382,66 @@ class Node:
         # Check my own id and query variables dict
         node_id = self.attributes["id"] if "id" in self.attributes else None
 
-        # If I have not been initialized, I am source
-        if node_id in inits and not inits[node_id]:
+        # If I am source
+        if (node_id in sources) or (node_id in inits and not inits[node_id]):
             return [node_id]
 
         # If my ID is in the variables dict (which should be unless None) and it has a non-empty list, I'm tainted
         if node_id in variables and variables[node_id]:
-            return variables[node_id] + [node_id]
+            return list(set(variables[node_id] + [node_id]))
 
         # Get all children bundled into one single array
         children_array = [child.is_tainted()
                           for key, value in self.children.items() for child in value]
 
-        # Merge all arrays into a single array (from https://stackoverflow.com/a/716482)
-        # This will be problematic once multiple children have been tainted by the same source! => Duplicate entries
-        # Since order does not really matter, maybe we can just `set` it
-        merged = list(set(itertools.chain.from_iterable(children_array)))
+        # Removing dead entries
+        clean = [c for c in children_array if c]
+        if len(clean) == 1:
+            clean = clean[0]
 
         # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !! IMPORTANT: tell joao
-        return merged
+        return clean
 
-    def sanitized_children(self):
-        """Returns variables sanitized by this node. Assumes node is Call and a sanitizer.
-        Tainting is done bottom-up; sanitization is done top-down. Curious."""
+    def sanitizes(self):
+        """Returns sanitizers of this node"""
 
-        global sans, san_flows
+        global variables, inits
 
-        # Check my own id and query sans dict
+        # Check my own id and query variables dict
         node_id = self.attributes["id"] if "id" in self.attributes else None
 
-        # If my ID is in the sanitizations dict
-        if node_id in sans and sans[node_id]:
-            return sans[node_id] + [node_id]
+        # If I am source
+        if (node_id in sources) or (node_id in inits and not inits[node_id]):
+            return [node_id]
+
+        # If my ID is in the variables dict (which should be unless None) and it has a non-empty list, I'm tainted
+        if node_id in variables and variables[node_id]:
+            return list(set(variables[node_id] + [node_id]))
 
         # Get all children bundled into one single array
-        children_array = [child.is_sanitized()
+        children_array = [child.is_tainted()
                           for key, value in self.children.items() for child in value]
 
-        # Merge all arrays into a single array (from https://stackoverflow.com/a/716482)
-        # This will be problematic once multiple children have been tainted by the same source! => Duplicate entries
-        # Since order does not really matter, maybe we can just `set` it
-        merged = list(set(itertools.chain.from_iterable(children_array)))
+        # Removing dead entries
+        clean = [c for c in children_array if c]
+        if len(clean) == 1:
+            clean = clean[0]
 
-        # 
-        return merged
+        # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !! IMPORTANT: tell joao
+        return clean
+
+    def get_tainters(self, flows):
+        """Recursive function to merge a recursive list  (a list of lists of lists of..."""
+
+        clean = []
+        for flow in flows: 
+            if isinstance(flow, list): 
+                flow = self.get_tainters(flow) #separate multiple-line outputs with newlines
+                clean += flow
+            else:
+                clean += [flow]
+
+        return clean
 
     def get_variables(self):
         """Return the global dictionary of variables"""
@@ -417,10 +450,11 @@ class Node:
 
     def reset_variables(self):
         """Resets variables from other traversals"""
-        global variables, sinks, sans, san_flows, inits, sanitizers
+        global variables, sinks, sans, san_flows, inits, sanitizers, sources
         variables = {}
         sinks = {}
         sans = {}
         san_flows = {}
         inits = {}
         sanitizers = []
+        sources = []
