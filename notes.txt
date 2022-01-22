@@ -60,3 +60,31 @@ Compare todo
 
 Attribute todo
 
+-----------------------------------------
+General project info (from slack and fenix)
+
+information flow from 
+low integrity. tainted user input
+to
+sensitive sinks (functions or variables)
+are illegal flows
+
+illegal flow is stil ilgeal but sanitized
+
+patterns mention
+	a flag indicating whether implicit flows are to be considered.
+		whats that??
+			if you google 'what are implicit information flows in coding'
+				you get 'An implicit flow occurs when code whose conditional execution is based on private information updates a public variable.'
+				same thing 'flows through control flow when computation branches on secret data and performs publicly observed side effects depending on which branch is taken'
+
+by default any uninstantiated variable that appears in the slice is to be considered as an entry point to all vulnerabilities being considered
+	only variables, not functions
+
+"unsanitized flows": whether there are unsanitized flows (string)
+"sanitized flows": sanitizing functions if present, otherwise empty (list of lists of strings)
+
+(Note: A flow is said to be sanitized if it goes "through" the sanitizer, i.e., if at some point the entire information is converted into the output of a sanitizer.)
+
+order of saniizations doesnt matter [s,f] or [f,s]
+
