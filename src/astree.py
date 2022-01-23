@@ -26,6 +26,10 @@ l1 = [ASSIGN, EXPR, IF, WHILE]
 l2 = [BINOP, CALL, COMPARE, ATTRIBUTE]
 l3 = [NAME, CONSTANT]
 
+# All flows
+global program_flows
+program_flows = []
+
 # Keep tab of what variables tainted each other
 global variables
 variables = {}
@@ -213,6 +217,7 @@ class Node:
             if self.ast_type == ASSIGN:
 
                 # Declare target as initialized
+                # NOT GUARANTEED THAT TARGETS IS L3!
                 for child in self.children["targets"]:
                     inits[child.attributes["id"]] = True
 
@@ -223,8 +228,12 @@ class Node:
                 if node_type in l2:
                     val.taint_nodes()
 
+                # One flow per assign
+                f=Flow()
+
                 # Tainting flows is a recursive list of flows from a source
-                tainting_flows = val.is_tainted()
+                tainting_flows = val.is_tainted(f)
+
 
                 if tainting_flows:
                     # If there are any, the left part is now tainted by all the variables in the flows
@@ -374,7 +383,7 @@ class Node:
 
                 child.taint_children(tainter)
 
-    def is_tainted(self):
+    def is_tainted(self, flow):
         """Returns whether this node has been tainted by one of its children, and who"""
 
         global variables, inits
@@ -384,6 +393,8 @@ class Node:
 
         # If I am source
         if (node_id in sources) or (node_id in inits and not inits[node_id]):
+            flow.set_source(node_id)
+            flow.add_to_chain([node_id])
             return [node_id]
 
         # If my ID is in the variables dict (which should be unless None) and it has a non-empty list, I'm tainted

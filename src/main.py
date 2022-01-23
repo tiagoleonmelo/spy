@@ -81,7 +81,7 @@ def main(tree, patterns, program_name):
         root.extract_sinks(pattern)
         root.extract_sans(pattern)
         root.init_variables()
-        log.debug("Successfully extracted variables and sinks from program")
+        log.debug("Successfully extracted variables and sinks from program %s" %program_name)
 
         # Fetch variables program - global state of the program
         variables, sinks, sans, san_flows, inits = root.get_variables()
