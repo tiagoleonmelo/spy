@@ -6,17 +6,6 @@
         "unsanitized flows": "yes",
         "sanitized flows": [
             [
-                "f",
-                "f"
-            ],
-            [
-                "f",
-                "f"
-            ],
-            [
-                "f"
-            ],
-            [
                 "f"
             ]
         ]
@@ -28,17 +17,6 @@
         "unsanitized flows": "yes",
         "sanitized flows": [
             [
-                "f",
-                "f"
-            ],
-            [
-                "f",
-                "f"
-            ],
-            [
-                "f"
-            ],
-            [
                 "f"
             ]
         ]
@@ -47,10 +25,13 @@
         "vulnerability": "B_1",
         "source": "b",
         "sink": "c",
-        "unsanitized flows": "yes",
+        "unsanitized flows": "no",
         "sanitized flows": [
             [
-                "d",
+                "e",
+                "d"
+            ],
+            [
                 "d"
             ]
         ]

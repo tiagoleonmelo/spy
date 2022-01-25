@@ -22,23 +22,11 @@ ATTRIBUTE = "Attribute"
 NAME = "Name"
 CONSTANT = "Constant"
 
-l1 = [ASSIGN, EXPR, IF, WHILE]
-l2 = [BINOP, CALL, COMPARE, ATTRIBUTE]
-l3 = [NAME, CONSTANT]
-
 # Keep tab of what variables tainted each other
 global variables
 variables = {}
 
-# Keep tab of tainted sinks
-global sinks
-sinks = {}
-
-# Keep tab of which variables have been sanitized
-global sans  # In days like these, kids like you..
-sans = {}
-
-# Keep tab of the sanitization flows that have occurred whenever a sink is reached
+# Variable that will be used to build the output
 global san_flows
 san_flows = {}
 
@@ -46,13 +34,17 @@ san_flows = {}
 global inits
 inits = {}
 
-# Static list of sanitizing functions. You would think sans.keys() would always equal this. Yes..
+# Static list of sanitizing functions
 global sanitizers
 sanitizers = []
 
 # Static list of sources
 global sources
 sources = []
+
+# Static list of sinks
+global sinks
+sinks = []
 
 """
 Rules of thumb
@@ -95,6 +87,9 @@ class Node:
     Anything other than these is extra (as per project presentation)
     """
 
+    # # Building the tree
+    # # # # # # # # # # # # # # #
+    
     def __init__(self, ast_type: str, attributes: dict) -> None:
         self.ast_type = ast_type
         self.children = {}
@@ -153,6 +148,9 @@ class Node:
             print(key)
             [c.print_tree() for c in child]
 
+    # # Analyzing the tree
+    # # # # # # # # # # # # # # #
+
     def extract_variables(self, pattern):
         """Returns a dictionary with variable names as keys and 'taint chain' as value.
         We consider a 'taint chain' to be the sequence of variables that has led to the key
@@ -172,117 +170,51 @@ class Node:
 
         return variables
 
-    def extract_sinks(self, pattern):
-        """Returns a dictionary with sink names as keys and an empty list as value.
-        This is meant to be called after extract_variables."""
-        global variables, sinks
+    def extract_static(self, pattern):
+        """Initialize all static variables"""
+        global variables, sanitizers, sources, sinks, inits
 
-        # Add sinks to their own struct
-        sinks = {key: [] for key in pattern['sinks']}
-
-        # Remove sinks from dictionary TODO
-        # [variables.pop(key) for key, _ in sinks.items()]
-
-        return sinks
-
-    def extract_sans(self, pattern):
-        """Returns a dictionary with sans names as keys and an empty list as value.
-        This is meant to be called after extract_variables."""
-        global variables, sans, sanitizers, sources
-
-        # Add sans to their own struct
-        sans = {key: [] for key in pattern['sanitizers']}
         sanitizers = pattern['sanitizers'].copy()
         sources = pattern['sources'].copy()
-
-        # Remove sans from dictionary TODO
-        # [variables.pop(key) for key, _ in sans.items()]
-
-        return sans
-
-    def init_variables(self):
-        """Returns a dictionary with all variables in the program marked as uninitialized.
-        """
-        global variables, inits
-
-        inits = {var: False for var, value in variables.items()}
-
-        return inits
+        sinks = pattern['sinks'].copy()
+        inits = {var: False for var, value in variables.items()
+                 if var not in sanitizers}
 
     def taint_nodes(self):
         """Main function that will iterate through a program"""
 
-        global variables, sinks, sans, san_flows, sanitizers
+        # We will only be tainting variables in this branch
+        if self.ast_type == ASSIGN:
+            # Declare target as initialized
+            for child in self.children["targets"]:
+                inits[child.attributes["id"]] = True
 
-        if self.ast_type in l1:
-
-            # We will only be tainting variables in this branch
-            if self.ast_type == ASSIGN:
-
-                # Declare target as initialized
+            # Right hand side of assignment
+            value = self.children["value"][0]
+            if value.is_tainted():
+                # If there are any, the targets will inherit sources and sanitizers
                 for child in self.children["targets"]:
-                    inits[child.attributes["id"]] = True
+                    child_name = child.attributes["id"]
 
-                # Right hand side of assignment
-                val = self.children["value"][0]
-                node_type = val.attributes["ast_type"]
+                    flows = value.get_flows()  # Should return list of flows (source + sanitizers) inside val
+                    variables[child_name] += flows
 
-                # Tainting flows is a recursive list of flows
-                tainting_flows = val.is_tainted()
-                if tainting_flows:
-                    # If there are any, the targets will inherit sources and sanitizers
-                    for child in self.children["targets"]:
-                        child_name = child.attributes["id"]
+                    # If the target is a sink, write to output
+                    if child_name in sinks:
+                        san_flows[child_name] = flows
 
-                        flows = val.get_flows()  # Should return list of flows (source + sanitizers) inside val
-                        variables[child_name] += flows
+        elif self.ast_type == EXPR:
+            # Expr is always a value
+            exp = self.children["value"][0]
+            exp.get_flows()
 
-                        if child_name in sinks:
-                            san_flows[child_name] = flows
+        elif self.ast_type == IF:
+            pass
 
-            elif self.ast_type == EXPR:
-                # Expr is always a value
-                exp = self.children["value"][0]
-                exp.get_flows()
+        elif self.ast_type == WHILE:
+            pass
 
-            elif self.ast_type == IF:
-                pass
-
-            elif self.ast_type == WHILE:
-                pass
-
-        elif self.ast_type in l2:
-
-            if self.ast_type == CALL:
-                # In a call, we can either have a sink or a sanitizer
-                # If this is a source, the assignment branch will already cover it
-                function_name = self.attributes["func"]["id"]
-
-                # Functions dont have to be initialized
-                inits.pop(function_name, None)
-
-                # If this is a sink
-                if function_name in sinks.keys():
-                    # Get all arguments
-
-                    # for arg in args:
-                    # Check if tainted and by who
-
-                    # Check if sanitized and by who
-
-                    # Create a Flow
-                    # flow = Flow(arg.source, arg.sans)
-                    pass
-
-                # If this is a sanitizer
-                elif function_name in sanitizers:
-                    pass
-
-                # If the function is neither a sink nor a san
-                else:
-                    pass
-
-        # right?
+        # Recursive call to children
         for key, value in self.children.items():
             [child.taint_nodes() for child in value]
 
@@ -308,15 +240,13 @@ class Node:
 
         # Removing dead entries
         clean = [c for c in children_array if c]
-        if len(clean) == 1:
-            clean = clean[0]
 
         # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !! IMPORTANT: tell joao
         return clean
 
     def get_flows(self):
-        """Returns a list of flows (source + sanitizers)"""
-        print(self.ast_type, variables)
+        """Called when sorting out Level 2 operations.
+        Returns a list of flows (source + sanitizers)"""
 
         if self.ast_type == CALL:
             # In a call, we can either have a sink or a sanitizer
@@ -334,22 +264,21 @@ class Node:
                 arg_flows += arg.get_flows()
 
             # If this is a sink
-            if function_name in sinks.keys():
-                # for arg in args:
-                # Check if tainted and by who
-                # Check if sanitized and by who
-
-                # Associate in a fflush list
-                # cock[function_name] = x
+            if function_name in sinks:
+                # Add to output list
+                # TODO: Append?
                 san_flows[function_name] = arg_flows
 
-                # Return x
+                # Return recursive call
                 return arg_flows
 
             # If this is a sanitizer
             elif function_name in sanitizers:
                 # Every flow within these arguments has now been sanitized by function_name
-                cpy = [Flow(arg_flow.source, arg_flow.sanitizers.copy()) for arg_flow in arg_flows]
+                # Creating a copy of the flows in order not to modify global variables
+                cpy = [Flow(arg_flow.source, arg_flow.sanitizers.copy())
+                       for arg_flow in arg_flows]
+
                 [arg_flow.sanitizers.append(function_name) for arg_flow in cpy]
 
                 # Return a list (source, [sanitizers + function_name]) for each arg_flow
@@ -373,49 +302,33 @@ class Node:
 
             merged = list(itertools.chain.from_iterable(binop_flows))
 
-            return merged
-
             # Should return a list of flows with all the sources and sanitizers
-            # [(d, [])]
+            return merged
 
         # If this is not a call, just return a flow if this is tainted
         var_name = self.attributes["id"] if "id" in self.attributes else None
 
         if var_name in inits and not inits[var_name]:
-            print(var_name)
             return [Flow(var_name, [])]
         elif var_name in variables:
             return variables[var_name].copy()
 
         return []
 
-    def get_tainters(self, flows):
-        """Recursive function to merge a recursive list  (a list of lists of lists of..."""
-
-        clean = []
-
-        for flow in flows:
-            if isinstance(flow, list):
-                # separate multiple-line outputs with newlines
-                flow = self.get_tainters(flow)
-                clean += flow
-            else:
-                clean += [flow]
-
-        return clean
+    # # Getters and setters
+    # # # # # # # # # # # # # # #
 
     def get_variables(self):
         """Return the global dictionary of variables"""
-        global variables, sinks, sans, san_flows, inits
-        return variables, sinks, sans, san_flows, inits
+        global variables, san_flows, inits
+        return variables, san_flows, inits
 
     def reset_variables(self):
         """Resets variables from other traversals"""
-        global variables, sinks, sans, san_flows, inits, sanitizers, sources
+        global variables, san_flows, inits, sanitizers, sources, sinks
         variables = {}
-        sinks = {}
-        sans = {}
         san_flows = {}
         inits = {}
         sanitizers = []
         sources = []
+        sinks = []
