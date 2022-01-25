@@ -208,16 +208,35 @@ class Node:
         return inits
 
     def execute(self):
+        global program_flows
         counter=1
         for key, value in self.children.items():
             for child in value:
                 #for line of code
                 print('LINE '+str(counter))
-                #print(child.ast_type)
                 child.taint_nodes()
                 counter+=1
-                print(program_flows[counter-2])
+                print('semi final')
+                print(program_flows[len(program_flows)-1])
                 self.merge_flows()
+                self.dup_flows()
+        print('b4 clean')
+        for p in program_flows:
+            print(p)
+        program_flows=[p for p in program_flows if p.source and p.sink]
+
+    def dup_flows(self):
+        global program_flows, sources
+        bad=[p for p in program_flows if p.source and p.sink]
+        for b in bad:
+            all_sources=[el for el in b.chain if el in sources]
+            if len(all_sources)>1:
+                for source in all_sources:
+                    if source!=b.source:
+                        f=Flow()
+                        f.source=
+
+
 
     def merge_flows(self):
         global program_flows
@@ -240,10 +259,6 @@ class Node:
         Build taint chains."""
 
         global variables, sinks, sans, san_flows, sanitizers, program_flows, sources
-
-        print('#bruh')
-        #print(program_flows)
-        print(self.ast_type)
 
         if self.ast_type in l1:
 
@@ -339,7 +354,6 @@ class Node:
                 #TODO if fucntion is sanitizer
 
                 for arg in self.children["args"]:
-                    #print(arg.attributes)
                     f=Flow()
                     flow.children.append(f)
                     arg.taint_nodes(f)
@@ -370,8 +384,10 @@ class Node:
                 
 
             elif self.ast_type == BINOP:
-                # ...
-                pass
+                left=self.children["left"][0]
+                right=self.children["right"][0]
+                left.taint_nodes(flow)
+                right.taint_nodes(flow)
 
             elif self.ast_type == ATTRIBUTE:
                 pass
@@ -381,16 +397,20 @@ class Node:
             if self.ast_type == NAME:
                 # Check my own id and query variables dict
                 node_id = self.attributes["id"]
+                if (node_id in inits and not inits[node_id] and node_id not in sources):
+                    sources.append(node_id)
 
                 res=self.check_flow_sources(node_id)
 
                 if res:
-                    flow.chain.extend(res.chain)
-                    flow.source=res.source
+                    for fl in res:
+                        flow.chain.extend(fl.chain)
+                        flow.source=fl.source
+                    flow.chain=list(set(flow.chain))
                 else:
                     flow.chain.append(node_id)
                     # If I am source
-                    if (node_id in sources) or (node_id in inits and not inits[node_id]):
+                    if (node_id in sources):
                         flow.source=node_id
             
 
@@ -401,11 +421,11 @@ class Node:
 
     def check_flow_sources(self,var):
         global program_flows
+        ret=[]
         for f in program_flows:
-            #WARNING WHAT IF IN MULTIPLE???
             if var in f.chain and f.source:
-                return f
-        return None
+                ret.append(f)
+        return ret
 
 
 
@@ -479,6 +499,6 @@ class Node:
         sources = []
         program_flows = []
 
-    def get_flows(self):
-        global program_flows
-        return program_flows
+    def get_flows_and_sources(self):
+        global program_flows, sources
+        return program_flows, sources
