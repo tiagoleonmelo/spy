@@ -80,7 +80,17 @@ def main(tree, patterns, program_name):
         log.debug(variables)
         log.debug(san_flows)
 
+        # Split the program into all its possible executions
+        # subtrees = root.parse_ifs()
+        # for sub in subtrees:
+        #   sub.reset_variables()
+        #   variables, san_flows, inits = sub.get_variables()
+        #   sub.taint_nodes()
+        #   output += check_any_tainted_sinks(san_flows, pattern)
+        #   
+
         # Traverse tree and taint variables that have been in contact with sources
+        # Only do this if there were no ifs
         root.taint_nodes()
         log.debug(variables)
         log.debug(san_flows)

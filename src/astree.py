@@ -209,8 +209,9 @@ class Node:
             exp.get_flows()
 
         elif self.ast_type == IF:
+            # Recursive call for every node in body
             pass
-
+        
         elif self.ast_type == WHILE:
             pass
 
