@@ -25,7 +25,11 @@
         "source": "b",
         "sink": "e",
         "unsanitized flows": "yes",
-        "sanitized flows": []
+        "sanitized flows": [
+            [
+                "s"
+            ]
+        ]
     },
     {
         "vulnerability": "B_3",
