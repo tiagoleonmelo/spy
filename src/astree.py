@@ -1,5 +1,6 @@
 import itertools
 import pprint
+import re
 
 from flow import Flow
 
@@ -206,74 +207,119 @@ class Node:
 
         return inits
 
-    def taint_nodes(self):
+    def execute(self):
+        counter=1
+        for key, value in self.children.items():
+            for child in value:
+                #for line of code
+                print('LINE '+str(counter))
+                #print(child.ast_type)
+                child.taint_nodes()
+                counter+=1
+                print(program_flows[counter-2])
+                self.merge_flows()
+
+    def merge_flows(self):
+        global program_flows
+        new_flows = []
+        latest=program_flows.pop()
+        if len(latest.children)>0:
+            print('MERGING')
+            latest.merge(new_flows)
+            print('NEW')
+            for y in new_flows:
+                if y:
+                    print(y.chain)
+                    program_flows.append(y)
+        else:
+            program_flows.append(latest)
+
+
+    def taint_nodes(self, flow=Flow()):
         """Taint every node that has been 'in contact' with a source.
         Build taint chains."""
 
-        global variables, sinks, sans, san_flows, sanitizers
+        global variables, sinks, sans, san_flows, sanitizers, program_flows, sources
+
+        print('#bruh')
+        #print(program_flows)
+        print(self.ast_type)
 
         if self.ast_type in l1:
 
             if self.ast_type == ASSIGN:
 
                 # Declare target as initialized
-                # NOT GUARANTEED THAT TARGETS IS L3!
+                # WARNING, NOT GUARANTEED THAT TARGETS IS L3!
                 for child in self.children["targets"]:
                     inits[child.attributes["id"]] = True
 
                 # Right hand side of assignment
                 val = self.children["value"][0]
                 node_type = val.attributes["ast_type"]
-                
-                if node_type in l2:
-                    val.taint_nodes()
 
                 # One flow per assign
+                #WARNING, estou a assumir q so ha 1 flow, mas se forem varios targets i guess q ha mais
                 f=Flow()
+                
+                val.taint_nodes(f)
 
-                # Tainting flows is a recursive list of flows from a source
-                tainting_flows = val.is_tainted(f)
+
+                for child in self.children["targets"]:
+                    var=child.attributes["id"]
+                    f.chain.append(var)
+                    if var in sinks:
+                        f.sink=var
+                program_flows.append(f)
+                
+                #TODO
+                # # Tainting flows is a recursive list of flows from a source
+                # tainting_flows = val.is_tainted(f)
 
 
-                if tainting_flows:
-                    # If there are any, the left part is now tainted by all the variables in the flows
-                    tainters = self.get_tainters(tainting_flows)
+                # if tainting_flows:
+                #     # If there are any, the left part is now tainted by all the variables in the flows
+                #     tainters = self.get_tainters(tainting_flows)
                     
-                    # If value is tainted, taint the left-hand side (targets)
-                    for child in self.children["targets"]:
+                #     # If value is tainted, taint the left-hand side (targets)
+                #     for child in self.children["targets"]:
 
-                        # Tainting the targets with all the children of value
-                        # NOT GUARANTEED THAT TARGETS IS L3!
-                        for t in tainters:
-                            variables[child.attributes["id"]].extend(variables[t] + [t])
-                            sink = child.attributes["id"]
+                #         # Tainting the targets with all the children of value
+                #         # NOT GUARANTEED THAT TARGETS IS L3!
+                #         for t in tainters:
+                #             variables[child.attributes["id"]].extend(variables[t] + [t])
+                #             sink = child.attributes["id"]
 
-                            if sink in sinks.keys():
-                                # We need to get any sanitizing functions for each of the flows therein
-                                child.get_full_flow() # Should return all contamination chain + sanitizers
+                #             if sink in sinks.keys():
+                #                 # We need to get any sanitizing functions for each of the flows therein
+                #                 child.get_full_flow() # Should return all contamination chain + sanitizers
                                 
-                                # Whenever a sink gets tainted, we need to check if the tainters have been sanitized
-                                sinks[sink] = variables[sink]
+                #                 # Whenever a sink gets tainted, we need to check if the tainters have been sanitized
+                #                 sinks[sink] = variables[sink]
                                 
-                                if t not in san_flows.keys():
-                                    san_flows[t] = []
+                #                 if t not in san_flows.keys():
+                #                     san_flows[t] = []
 
-                                if t in sans.keys():
-                                    san_flows[t] += [sans[t]]
-                                    san_flows[t] = list(set(san_flows[t]))
+                #                 if t in sans.keys():
+                #                     san_flows[t] += [sans[t]]
+                #                     san_flows[t] = list(set(san_flows[t]))
 
-                                #flows[sink] = Flow(source, tainters, sanitizers)
+                #                 #flows[sink] = Flow(source, tainters, sanitizers)
 
 
-                        # Clean up possible duplicates
-                        variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
+                #         # Clean up possible duplicates
+                #         variables[child.attributes["id"]] = list(set(variables[child.attributes["id"]]))
 
 
             elif self.ast_type == EXPR:
                 # expr is always a value..
                 exp = self.children["value"][0]
 
-                exp.taint_nodes()
+                f=Flow()
+
+                exp.taint_nodes(f)
+
+                program_flows.append(f)
 
             elif self.ast_type == IF:
                 pass
@@ -284,75 +330,44 @@ class Node:
         elif self.ast_type in l2:
 
             if self.ast_type == CALL:
-                # NOT GUARANTEED THAT FUNC IS L3!
-                # If one arg is tainted taint the others, and taint victim -> I dont think we should taint the victim.
-                # A function can be tainted but I dont think it should be able to taint other elements:
-                #
-                #   a = f(b, c) // where b is a source
-                #   r = f(w, q) // where there are no sources
-                #
-                # If we consider f gets tainted in the first line r, w and q will be tainted in the second one.
-                # OTOH if f does not get tainted, how will we spot tainted sinks?
-                #
-                # I want functions to get tainted, but I dont want them to taint other things.
-                #
-                # Idea: what if we NEVER taint functions, but we have an additional data structure keeping tabs
-                # of the sinks that have been tainted?
-                #
-                # I think this is good. Depois no fim não fazemos nenhum pass pelo global variables, mas sim
-                # por esta struct que só tem os sinks q foram tainted e por quem
-                # We have a structure to keep record of the tainting, and a structure to keep record of the sinks.
-                #
-                # Its hard though.
-                # Yolo, committing before breaking changes.
-                #
-                # So, to taint we only read from `variables`, and at the end we only read from `sinks`
+
                 function_name = self.attributes["func"]["id"]
                 
                 # Removing functions from initializations
                 inits.pop(function_name, None)
 
-                # We need to know if this is a sink or a san function
-                if function_name in sinks.keys():
-                    for arg in self.children["args"]:
-                        tainting_flows = arg.is_tainted()
-                        for tf in tainting_flows:
-                            # Whenever a sink is tainted, we need to check if the tainters have been sanitized
-                            print(variables, sinks, tf, tainting_flows)
-                            for t in tf:
-                                sinks[function_name].extend(variables[t] + [t])
-                                sinks[function_name] = list(set(sinks[function_name]))
+                #TODO if fucntion is sanitizer
 
-                            # if t not in san_flows.keys():
-                            #     san_flows[t] = []
+                for arg in self.children["args"]:
+                    #print(arg.attributes)
+                    f=Flow()
+                    flow.children.append(f)
+                    arg.taint_nodes(f)
+                    f.chain.append(function_name)
 
-                            # if t in sans.keys():
-                            #     san_flows[t] += [sans[t]]
-                            #     san_flows[t] = list(set(san_flows[t]))
-                                                
-                elif function_name in sanitizers:
-                    # We need to include that this function sanitized a flow.
-                    # What should this struct look like?..
-                    # {san_func: san_var}? and in the end we check if any of the variables that tainted
-                    # a given sink has an entry in this dict?... might be...
-                    for arg in self.children["args"]:
-                        tainting_flows = arg.is_tainted()
-                        for tf in tainting_flows:
-                            # If the argument is tainted, make sure we create a sanitization flow
-                            if tf and "id" in arg.attributes:
-                                arg_id = arg.attributes["id"]
+                if len(self.children["args"])==0:
+                    flow.chain.append(function_name)
 
-                                if arg_id not in sans.keys():
-                                    sans[arg_id] = []
+                if function_name in sources:
+                    flow.source=function_name
 
-                                sans[arg_id] += [function_name]
-                                sans[arg_id] = list(set(sans[arg_id]))
+                if function_name in sinks:
+                    flow.sink=function_name
 
-                            #sans[function_name] += [t]
-                            #sans[function_name] = list(set(sans[function_name]))
+                #TODO ?????????
+                # res=self.check_flow_sources(function_name)
 
-                else: # If the function is neither a sink nor a san
-                    pass
+                # if res:
+                #     flow.chain.extend(res.chain)
+                #     flow.source=res.source
+                # else:
+                #     flow.chain.append(function_name)
+                #     # If I am source
+                #     if function_name in sources:
+                #         flow.source=function_name
+
+                    
+                
 
             elif self.ast_type == BINOP:
                 # ...
@@ -364,13 +379,36 @@ class Node:
                 pass
         elif self.ast_type in l3:
             if self.ast_type == NAME:
-                pass
-            elif self.ast_type == CONSTANT:
-                pass
+                # Check my own id and query variables dict
+                node_id = self.attributes["id"]
 
-        # right?
-        for key, value in self.children.items():
-            [child.taint_nodes() for child in value]
+                res=self.check_flow_sources(node_id)
+
+                if res:
+                    flow.chain.extend(res.chain)
+                    flow.source=res.source
+                else:
+                    flow.chain.append(node_id)
+                    # If I am source
+                    if (node_id in sources) or (node_id in inits and not inits[node_id]):
+                        flow.source=node_id
+            
+
+            elif self.ast_type == CONSTANT:
+                flow.chain.append('CONSTANT')
+
+        
+
+    def check_flow_sources(self,var):
+        global program_flows
+        for f in program_flows:
+            #WARNING WHAT IF IN MULTIPLE???
+            if var in f.chain and f.source:
+                return f
+        return None
+
+
+
 
     def taint_children(self, tainter):
         """Taints children of node"""
@@ -382,36 +420,6 @@ class Node:
                         set(variables[child.attributes["id"]]))
 
                 child.taint_children(tainter)
-
-    def is_tainted(self, flow):
-        """Returns whether this node has been tainted by one of its children, and who"""
-
-        global variables, inits
-
-        # Check my own id and query variables dict
-        node_id = self.attributes["id"] if "id" in self.attributes else None
-
-        # If I am source
-        if (node_id in sources) or (node_id in inits and not inits[node_id]):
-            flow.set_source(node_id)
-            flow.add_to_chain([node_id])
-            return [node_id]
-
-        # If my ID is in the variables dict (which should be unless None) and it has a non-empty list, I'm tainted
-        if node_id in variables and variables[node_id]:
-            return list(set(variables[node_id] + [node_id]))
-
-        # Get all children bundled into one single array
-        children_array = [child.is_tainted()
-                          for key, value in self.children.items() for child in value]
-
-        # Removing dead entries
-        clean = [c for c in children_array if c]
-        if len(clean) == 1:
-            clean = clean[0]
-
-        # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !! IMPORTANT: tell joao
-        return clean
 
     def sanitizes(self):
         """Returns sanitizers of this node"""
@@ -461,7 +469,7 @@ class Node:
 
     def reset_variables(self):
         """Resets variables from other traversals"""
-        global variables, sinks, sans, san_flows, inits, sanitizers, sources
+        global variables, sinks, sans, san_flows, inits, sanitizers, sources, program_flows
         variables = {}
         sinks = {}
         sans = {}
@@ -469,3 +477,8 @@ class Node:
         inits = {}
         sanitizers = []
         sources = []
+        program_flows = []
+
+    def get_flows(self):
+        global program_flows
+        return program_flows
