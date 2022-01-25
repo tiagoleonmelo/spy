@@ -92,8 +92,8 @@ class Node:
     
     def __init__(self, ast_type: str, attributes: dict) -> None:
         self.ast_type = ast_type
-        self.children = {}
         self.attributes = attributes
+        self.children = {}
 
     def make_child(self, child: dict):
         """Entry point function to create the tree.
@@ -211,9 +211,11 @@ class Node:
         elif self.ast_type == IF:
             # Recursive call for every node in body
             pass
-        
+
         elif self.ast_type == WHILE:
             pass
+
+        #print(self.ast_type, self.children)
 
         # Recursive call to children
         for key, value in self.children.items():
@@ -315,6 +317,55 @@ class Node:
             return variables[var_name].copy()
 
         return []
+
+    def split_program(self, instructions):
+        # Given a set of nodess
+        # For every if that we find
+        # Return a program that considers condition true
+        # Return a program that considers condition false
+        # A program is a list of nodes
+        programs = [[]]
+        
+        # Assumes I am either Module or If
+        for child in instructions:
+            
+            # If this is an If, I will split all existing programs so that they consider its body and orelse
+            # I will also make a recursive call here, since ifs can be nested
+            if child.ast_type == IF:
+                # Fetch the sets of nodes that can be executed
+                if_body = child.split_program(child.children["body"])
+                orelse = child.split_program(child.children["orelse"])
+
+                parallel =  []
+
+                # Duplicating programs and making parallel universes
+                for prog in programs:
+                    parallel_universe = prog.copy()
+                    parallel_universe.extend(if_body)
+
+                    prog.extend(orelse)
+
+                    parallel += [parallel_universe]
+
+                programs.extend(parallel)
+
+                #return [Node("Module", {"body": child.children["body"]}), Node("Module", {"body": child.children["orelse"]})]
+            
+            # Everytime I encounter a non-branching child, I add it to every program
+            else:
+                for prog in programs:
+                    prog += [child]
+
+        clean = []
+
+        for prog in programs:
+            # Merge all high-level lists into a single list (one single, neat program)
+            #print(prog)
+            #merged = list(set(itertools.chain.from_iterable(prog)))
+            #clean += [merged]
+            pass
+
+        return programs
 
     # # Getters and setters
     # # # # # # # # # # # # # # #

@@ -62,41 +62,38 @@ def main(tree, patterns, program_name):
 
     root = Node("", {}).make_child(tree)
     output = []
-    # root.print_tree()
-    # root.taint_nodes()
 
     for pattern in patterns:
         log.debug("Analysing pattern %s" % pattern["vulnerability"])
         # Clean previous variables
         root.reset_variables()
 
-        # Get program variables and taint the sources
-        root.extract_variables(pattern)
-        root.extract_static(pattern)
-        log.debug("Successfully extracted variables and sinks from program")
+        # Split the program into all its possible execution flows
+        subtrees = root.split_program(root.children["body"])
 
-        # Fetch variables program - global state of the program
-        variables, san_flows, inits = root.get_variables()
-        log.debug(variables)
-        log.debug(san_flows)
+        for sub in subtrees:
+            print(sub)
 
-        # Split the program into all its possible executions
-        # subtrees = root.parse_ifs()
-        # for sub in subtrees:
-        #   sub.reset_variables()
-        #   variables, san_flows, inits = sub.get_variables()
-        #   sub.taint_nodes()
-        #   output += check_any_tainted_sinks(san_flows, pattern)
-        #   
+        # Analyse every possible execution flow
+        for sub in subtrees:
+            # Create fake root node
+            subroot = Node("Module", {})
+            subroot.children["body"] = sub
+            subroot.reset_variables()
 
-        # Traverse tree and taint variables that have been in contact with sources
-        # Only do this if there were no ifs
-        root.taint_nodes()
-        log.debug(variables)
-        log.debug(san_flows)
+            # Get program variables and taint the sources
+            root.extract_variables(pattern)
+            root.extract_static(pattern)
+            log.debug("Successfully extracted variables and sinks from program")
 
-        # Check if there are any tainted sinks and append them to vuln list
-        output += check_any_tainted_sinks(san_flows, pattern)
+            # Fetch variables program - global state of the program
+            variables, san_flows, inits = root.get_variables()
+            log.debug(variables)
+            log.debug(san_flows)
+
+            subroot.taint_nodes()
+
+            output += check_any_tainted_sinks(san_flows, pattern)
 
     # Write output to file
     with open(os.path.join(OUTPUT_DIR, program_name + ".output.json"), "w") as output_file:
