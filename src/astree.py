@@ -352,6 +352,27 @@ class Node:
 
                 programs = parallel.copy()
 
+            # If this is a While, behave exactly as an if, but include the body twice
+            elif child.ast_type == WHILE:
+                # Fetch the sets of nodes that can be executed
+                while_body = child.split_program(child.children["body"])
+
+                # We need to merge every entry in the while body with itself, since it can execute twice
+                for possibility in while_body:
+                    possibility.extend(possibility)
+
+                parallel = []
+
+                # Duplicating programs and making parallel universes
+                # This might not do well with many nested ifs. Unsure.
+                for prog in programs:
+                    for possibility in while_body:
+                        parallel_universe = prog.copy()
+                        parallel_universe.extend(possibility)
+                        parallel += [parallel_universe]
+
+                programs = parallel.copy()
+
             # Everytime I encounter a non-branching child, I add it to every program
             else:
                 for prog in programs:

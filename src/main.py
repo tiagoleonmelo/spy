@@ -88,7 +88,10 @@ def final_merge(output, patterns):
                 has_unsan_flows = "yes" if "yes" in [t["unsanitized flows"] for t in tmp] else "no"
 
                 # Clear any unsan flows
-                clean_sans = [san for san in merged_flow if san]
+                clean_sans = [list(set(san)) for san in merged_flow if san]
+
+                # Remove duplicate sanizitation flows
+                clean_sans = remove_duplicates(clean_sans)
 
                 new_vuln = {
                     "vulnerability": first["vulnerability"].split('_')[0] + '_' + str(final_counter),
@@ -103,6 +106,14 @@ def final_merge(output, patterns):
 
     return sorted(vulns, key= lambda x: x["vulnerability"])
 
+def remove_duplicates(l):
+    """Remove duplicate lists in a list of lists"""
+    new_list = []
+    for elem in l:
+        if elem not in new_list:
+            new_list.append(elem)
+
+    return new_list
 
 def main(tree, patterns, program_name):
     """Main program"""
@@ -176,7 +187,11 @@ if __name__ == "__main__":
         program_list = ['1a-basic-flow.py', '1b-basic-flow.py',
                         '2-expr-binary-ops.py',
                         '3a-expr-func-calls.py', '3b-expr-func-calls.py',
-                        '4a-conds-branching.py', '4b-conds-branching.py', ]
+                        '4a-conds-branching.py', '4b-conds-branching.py', 
+                        '5a-loops-unfolding.py', '5b-loops-unfolding.py', '5c-loops-unfolding.py',
+                        '6a-sanitization.py', '6b-sanitization.py',
+                        '7-conds-implicit.py', '8-loops-implici.py', '9-regions-guards.py'
+                    ]
 
         for i in range(0, int(n_programs)):
             program = program_list[i]

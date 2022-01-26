@@ -19,7 +19,7 @@
     },
     {
         "vulnerability": "B_1",
-        "source": "s",
+        "source": "c",
         "sink": "q",
         "unsanitized flows": "no",
         "sanitized flows": [
@@ -30,7 +30,7 @@
     },
     {
         "vulnerability": "B_2",
-        "source": "c",
+        "source": "s",
         "sink": "q",
         "unsanitized flows": "no",
         "sanitized flows": [
