@@ -344,11 +344,11 @@ class Node:
                     for if_possibility in if_body:
                         parallel_universe = prog.copy()
                         parallel_universe.extend(if_possibility)
+                        parallel += [parallel_universe]
 
-                    if orelse != [[]]: # Some ifs dont have an else and thats fine
-                        prog.extend(orelse)
-
-                    parallel += prog, parallel_universe
+                    for else_possibility in orelse:
+                        prog.extend(else_possibility)
+                        parallel += [prog]
 
                 programs = parallel.copy()
 
@@ -403,6 +403,9 @@ class Node:
         sinks = []
 
     def __str__(self) -> str:
+        if self.ast_type == ASSIGN:
+            targets = ', '.join([c.attributes["id"] for c in self.children["targets"]])
+            return self.ast_type + ' (' + targets + ')'
         return self.ast_type
 
     def __repr__(self) -> str:
