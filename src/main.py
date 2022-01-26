@@ -69,6 +69,8 @@ def final_merge(output, patterns):
     vulns = []
 
     for pat in patterns:
+        final_counter = 1 # Its the
+
         for sink in found_sinks:
             for src in found_srcs:
                 tmp = [vuln for vuln in output if vuln["source"] == src and vuln["sink"]
@@ -82,18 +84,22 @@ def final_merge(output, patterns):
                 for f in tmp:
                     merged_flow.extend(f["sanitized flows"])
 
+                # If one of the vulns being merged has an unsan flow, the new vuln will have unsan flows
+                has_unsan_flows = "yes" if "yes" in [t["unsanitized flows"] for t in tmp] else "no"
+
                 # Clear any unsan flows
                 clean_sans = [san for san in merged_flow if san]
 
                 new_vuln = {
-                    "vulnerability": first["vulnerability"],
+                    "vulnerability": first["vulnerability"].split('_')[0] + '_' + str(final_counter),
                     "source": src,
                     "sink": sink,
-                    "unsanitized flows": first["unsanitized flows"],
+                    "unsanitized flows": has_unsan_flows,
                     "sanitized flows": clean_sans
                 }
 
                 vulns += [new_vuln]
+                final_counter += 1
 
     return sorted(vulns, key= lambda x: x["vulnerability"])
 
