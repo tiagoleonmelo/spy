@@ -72,6 +72,8 @@ def main(tree, patterns, program_name):
         subtrees = root.split_program(root.children["body"])
 
         for sub in subtrees:
+            # Cleaning up dead entries
+            sub = [s for s in sub if s]
             print(sub)
 
         # Analyse every possible execution flow

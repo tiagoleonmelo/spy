@@ -328,7 +328,7 @@ class Node:
         
         # Assumes I am either Module or If
         for child in instructions:
-            
+
             # If this is an If, I will split all existing programs so that they consider its body and orelse
             # I will also make a recursive call here, since ifs can be nested
             if child.ast_type == IF:
@@ -336,20 +336,22 @@ class Node:
                 if_body = child.split_program(child.children["body"])
                 orelse = child.split_program(child.children["orelse"])
 
-                parallel =  []
+                parallel = []
 
                 # Duplicating programs and making parallel universes
                 for prog in programs:
-                    parallel_universe = prog.copy()
-                    parallel_universe.extend(if_body)
 
-                    prog.extend(orelse)
+                    for if_possibility in if_body:
+                        parallel_universe = prog.copy()
+                        parallel_universe.extend(if_possibility)
 
-                    parallel += [parallel_universe]
+                    if orelse != [[]]: # Some ifs dont have an else and thats fine
+                        prog.extend(orelse)
 
-                programs.extend(parallel)
+                    parallel += prog, parallel_universe
 
-                #return [Node("Module", {"body": child.children["body"]}), Node("Module", {"body": child.children["orelse"]})]
+                programs = parallel.copy()
+
             
             # Everytime I encounter a non-branching child, I add it to every program
             else:
@@ -366,6 +368,21 @@ class Node:
             pass
 
         return programs
+
+    def merge_lists(self, flows):
+        """Recursive function to merge a recursive list  (a list of lists of lists of..."""
+
+        clean = []
+
+        for flow in flows:
+            if isinstance(flow, list):
+                # separate multiple-line outputs with newlines
+                flow = self.merge_lists(flow)
+                clean += flow
+            else:
+                clean += [flow]
+
+        return clean
 
     # # Getters and setters
     # # # # # # # # # # # # # # #
@@ -384,3 +401,9 @@ class Node:
         sanitizers = []
         sources = []
         sinks = []
+
+    def __str__(self) -> str:
+        return self.ast_type
+
+    def __repr__(self) -> str:
+        return str(self)
