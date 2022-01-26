@@ -208,15 +208,6 @@ class Node:
             exp = self.children["value"][0]
             exp.get_flows()
 
-        elif self.ast_type == IF:
-            # Recursive call for every node in body
-            pass
-
-        elif self.ast_type == WHILE:
-            pass
-
-        #print(self.ast_type, self.children)
-
         # Recursive call to children
         for key, value in self.children.items():
             [child.taint_nodes() for child in value]
@@ -295,7 +286,7 @@ class Node:
             # If the function is neither a sink, source, nor san
             return arg_flows
 
-        elif self.ast_type == BINOP:
+        elif self.ast_type == BINOP or self.ast_type == COMPARE:
             binop_flows = []
 
             # Depth-first fetch of all operands
@@ -380,6 +371,58 @@ class Node:
                     prog += [child]
 
         return programs
+
+    def check_implicit(self):
+        """Lighter version of taint_nodes.
+        Assumes self is a full tree (not splitted).
+        Assumes every instruction is done (no parallel universes).
+        Taints assignment targers that occur inside a branch."""
+        # We will only be tainting variables in this branch
+        if self.ast_type == ASSIGN:
+            # Declare target as initialized
+            for child in self.children["targets"]:
+                inits[child.attributes["id"]] = True
+
+            # Right hand side of assignment
+            value = self.children["value"][0]
+            if value.is_tainted():
+                # If there are any, the targets will inherit sources and sanitizers
+                for child in self.children["targets"]:
+                    child_name = child.attributes["id"]
+
+                    flows = value.get_flows()  # Should return list of flows (source + sanitizers) inside val
+                    variables[child_name] += flows
+
+                    # If the target is a sink, write to output
+                    if child_name in sinks:
+                        san_flows[child_name] = flows
+
+        elif self.ast_type == EXPR:
+            # Expr is always a value
+            exp = self.children["value"][0]
+            exp.get_flows()
+
+        elif self.ast_type == IF or self.ast_type == WHILE:
+            cond = self.children["test"][0]
+            # If the condition is tainted
+            if cond.is_tainted():
+                # Taint every assignment target done in body
+                for child in self.children["body"]:
+                    if child.ast_type == ASSIGN:
+                        # Every target will inherit sources and sanitizers of the tainter in the test
+                        for grandchild in child.children["targets"]:
+                            child_name = grandchild.attributes["id"]
+
+                            flows = cond.get_flows()  # Should return list of flows (source + sanitizers) inside val
+                            variables[child_name] += flows
+
+                            # If the target is a sink, write to output
+                            if child_name in sinks:
+                                san_flows[child_name] = flows
+
+        # Recursive call to children
+        for key, value in self.children.items():
+            [child.check_implicit() for child in value]
 
     def merge_lists(self, flows):
         """Recursive function to merge a recursive list  (a list of lists of lists of..."""

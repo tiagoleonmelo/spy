@@ -153,6 +153,24 @@ def main(tree, patterns, program_name):
 
             output += check_any_tainted_sinks(san_flows, pattern)
 
+        # We now check if there are any implicit flows in the full tree
+        if pattern["implicit"] == "yes":
+            log.debug("++ Checking for implicit flows in root")
+            root.reset_variables()
+
+            root.extract_variables(pattern)
+            root.extract_static(pattern)
+            log.debug("Successfully extracted variables and sinks from program")
+            
+            # Fetch variables program - global state of the program
+            variables, san_flows, inits = root.get_variables()
+            
+            # Check every conditional body
+            # If in the condition there is a source or tainted variables
+            root.check_implicit()
+
+            output += check_any_tainted_sinks(san_flows, pattern)
+
     # Merge vulns with same source / sink
     output = final_merge(output, patterns)
 
