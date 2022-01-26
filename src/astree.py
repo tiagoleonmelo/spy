@@ -358,6 +358,8 @@ class Node:
                 while_body = child.split_program(child.children["body"])
                 parallel = []
                     
+                # TODO: Consider 0, 1 and 2 executions of the while. Currently only considering two
+
                 # We merge every entry in the while body with every entry, since it can execute twice
                 # Permutations between all elements in while_body
                 for i in range(len(while_body)):

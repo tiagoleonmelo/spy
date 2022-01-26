@@ -8,12 +8,19 @@ Load AST from JSON file passed as argument, load list of vulnerability patterns,
 
 ## Running
 ```bash
-$ git clone git@github.com:tiagoleonmelo/spy.git # Cloning with SSH
 $ cd src
-$ python3 main.py slices/1a-basic-flow.py.json patterns/1a-patterns.json
+$ python3 main.py <program.json> <patterns.json>
 ```
 
-## Backlog
-* This works a lot like a compiler. We get an `ast`, and then `ast.visit()` it. I think the idea goes along the lines of implementing our own tree visit. Check the [tutorial](https://greentreesnakes.readthedocs.io/en/latest/manipulating.html) dos stores.
-* I think we can use `grep` for finding sinks in the AST input and then trace back to variables that taint it. If any of these variables was obtained with the sources that correspond to that entry in the vulnerability patterns input file, we flag the sink as unsafe.
-* We must produce a JSON entry with this information for every vulnerability found. We also must find potential sanitization attemps that might already be in place (once again, I think we can do it with `grep`).
+This creates an output file in `src/output/`, under the name `<program>.output.json`.
+Currently, we also support a mass testing mode using the examples provided by the teacher. By running:
+```bash
+$ python3 main.py -t <N>
+```
+we execute `<N>` tests, sequentially, from the simplest `1a` example up until `9`. Then, we compare the outputs and produce relevant messages. **Important to note** how due to numbering of the vulnerabilities found, false mismatches sometimes occur.
+
+## Supported Features
+We support the analysis of the mandatory constructs `Assign`, `Expr`, `If` and `While`. Moreover, we also check for sanitization flows that might occur therein.
+
+## Known Issues
+None :) 
