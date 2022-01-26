@@ -356,15 +356,14 @@ class Node:
             elif child.ast_type == WHILE:
                 # Fetch the sets of nodes that can be executed
                 while_body = child.split_program(child.children["body"])
-
-                # We need to merge every entry in the while body with itself, since it can execute twice
-                for possibility in while_body:
-                    possibility.extend(possibility)
-
                 parallel = []
+                    
+                # We merge every entry in the while body with every entry, since it can execute twice
+                # Permutations between all elements in while_body
+                for i in range(len(while_body)):
+                    for ii in range(i, len(while_body)):
+                        while_body[i].extend(while_body[ii])
 
-                # Duplicating programs and making parallel universes
-                # This might not do well with many nested ifs. Unsure.
                 for prog in programs:
                     for possibility in while_body:
                         parallel_universe = prog.copy()

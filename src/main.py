@@ -61,7 +61,6 @@ def check_any_tainted_sinks(san_flows, pat):
 
     return vulns
 
-
 def final_merge(output, patterns):
     """Merge flows given a list of vulnerability dictionaries"""
     found_srcs = sorted(list(set([vuln["source"] for vuln in output])))
