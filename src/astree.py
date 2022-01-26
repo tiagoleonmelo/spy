@@ -339,8 +339,8 @@ class Node:
                 parallel = []
 
                 # Duplicating programs and making parallel universes
+                # This might not do well with many nested ifs. Unsure.
                 for prog in programs:
-
                     for if_possibility in if_body:
                         parallel_universe = prog.copy()
                         parallel_universe.extend(if_possibility)
@@ -352,20 +352,10 @@ class Node:
 
                 programs = parallel.copy()
 
-            
             # Everytime I encounter a non-branching child, I add it to every program
             else:
                 for prog in programs:
                     prog += [child]
-
-        clean = []
-
-        for prog in programs:
-            # Merge all high-level lists into a single list (one single, neat program)
-            #print(prog)
-            #merged = list(set(itertools.chain.from_iterable(prog)))
-            #clean += [merged]
-            pass
 
         return programs
 
