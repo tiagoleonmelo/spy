@@ -1,5 +1,5 @@
 class Flow:
-    """I need an easy way to produce output. Im done with managing dictionaries of lists."""
+    """Flow keeping track of source and sanitizers."""
     def __init__(self, source, sanitizers) -> None:
         self.source = source
         self.sanitizers = sanitizers

@@ -1,0 +1,69 @@
+#Files
+
+- astree.py
+    Core project component where we define the class and methods necessary for building our internal representation of the AST tree, and iterating it looking for vulnerabilities.
+- main.py 
+    Main file to be called in the command line to run the project. Receives the input, sending it to the 'astree' module, and receives the output writing it to a file in the 'output' folder.
+- flow.py 
+    Helper class(es) that define flows consisting of sources and sanitizers.
+- logger.py 
+    Helper class adding a little bit of style to the messages produced in the command line.
+
+#Program Flow:
+
+1- Call main.py from the terminal, either with:
+    1.1 main.py slice.json pattern.json
+        This receives the specified slice and pattern, producing a 'slice.output.json' file in the 'output' folder.
+    1.2 main.py -t number_of_tests 
+        This runs <number_of_tests> consecutive tests corresponding to the 15 examples provided by the teacher, from example 1a to 9, also writing all its output to the corresponding files.
+
+2- Slice and pattern files are loaded using a standard json.load() call
+
+3- Call to main() function
+
+4- The json loaded slice is converted to our internal AST tree representation, returning a single 'root' Node containing the entire tree
+    4.1 Node class definition: Each element of tree is a Node class, mantaining its ast_type (Assign,Call,Constant,etc.), all its children, which are also Nodes, and all the json attributes of the Node, for convenience.
+    4.2 Algorithm: 
+            Discard some useless json attributes
+            Create a new node
+            Recursively iterate the tree creating new Nodes and its children
+
+5- For each different pattern provided, analyze the tree in order to find vulnerabilities
+    5.1 Algorithm:
+        Reset auxiliary variables and data structures
+        6*-Split the slice into all its different execution flows (ifs and whiles), producing subtrees
+        7*-Analyze each subtree (Main Algorithm)
+            7.1-Initialize auxiliary variables and data structures
+            7-2-Iterate tree and produce chains/flows
+            7.3-Check for vulnerabilities and produce output
+        8*-Check for implicit flows
+
+6- Split slice into all execution flows 
+    Analyze the program to check for If's and While's 
+    If they exist, we have to consider several different execution flows when looking for vulnerabilities
+    A recursive function splits the original program into several different ones, returning all the flows/subtrees
+
+7- Analyze tree
+    7.1- Initialize auxiliary variables such as lists of provided sinks and sources, and initialized variables
+        and data structures contaning the tainting chains/flows of the program variables
+    7.2- Recursively iterate the tree based on the ast_type which corresponds to different 'instruction levels' (lvl1 assign,expr; lvl2 call,binop)
+        According to each instruction type analyze the necessary attributes to create contamination chains/flows
+    7.3- Check for sources and sinks in contamination chains
+
+8- Check for implicit flows 
+    Handle implicit flows separately, by analyzing the full tree (single execution flows)
+
+9- Merge output
+    Combine any multiple vulnerability chains found into a single accurate one
+
+10- Write output to file 
+
+11- (Test module only) Compares each of the written output files to the ones provided by the teacher, informing whether or not they are identical.
+    This brings a lot of false negatives (deemed not identical when in fact it is) because vulnerabilities could be in different order:
+        File1: A_1: vuln1, A_2: vuln2 
+        vs 
+        File2: A_1: vuln2, A_2: vuln1
+
+
+#Results
+In the 15 examples provided by the teacher, all of them match the expected output except for number 9.

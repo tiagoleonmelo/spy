@@ -28,8 +28,8 @@ def check_any_tainted_sinks(san_flows, pat):
         if sink in san_flows and san_flows[sink]:
             # For each tainted sink create as many vulns as there are flows tainting it!
             flows = san_flows[sink]
-            log.debug("Sink %s tainted by %s" %
-                      (sink, ', '.join([f.source for f in flows])))
+            #log.debug("Sink %s tainted by %s" %
+                      #(sink, ', '.join([f.source for f in flows])))
 
             # Merge all flows with same source in this sink
             merged_flows = []
@@ -68,8 +68,7 @@ def final_merge(output, patterns):
     vulns = []
 
     for pat in patterns:
-        final_counter = 1 # Its the
-
+        final_counter = 1
         for sink in found_sinks:
             for src in found_srcs:
                 tmp = [vuln for vuln in output if vuln["source"] == src and vuln["sink"]
@@ -122,7 +121,7 @@ def main(tree, patterns, program_name):
     output = []
 
     for pattern in patterns:
-        log.debug("+ Analysing pattern %s" % pattern["vulnerability"])
+        log.debug("+ Analysing program %s - pattern %s" % (program_name, pattern["vulnerability"]))
 
         # Clean previous variables and counters
         root.reset_variables()
@@ -133,7 +132,7 @@ def main(tree, patterns, program_name):
 
         # Analyse every possible execution flow
         for sub in subtrees:
-            log.debug("++ Analyzing execution flow " + str(sub))
+            #log.debug("++ Analyzing execution flow " + str(sub))
 
             # Create fake root node
             subroot = Node("Module", {})
@@ -143,11 +142,11 @@ def main(tree, patterns, program_name):
             # Get program variables and taint the sources
             root.extract_variables(pattern)
             root.extract_static(pattern)
-            log.debug("Successfully extracted variables and sinks from program")
+            #log.debug("Successfully extracted variables and sinks from program")
 
             # Fetch variables program - global state of the program
             variables, san_flows, inits = root.get_variables()
-            log.debug(variables)
+            #log.debug(variables)
 
             subroot.taint_nodes()
 
@@ -155,12 +154,12 @@ def main(tree, patterns, program_name):
 
         # We now check if there are any implicit flows in the full tree
         if pattern["implicit"] == "yes":
-            log.debug("++ Checking for implicit flows in root")
+            #log.debug("++ Checking for implicit flows in root")
             root.reset_variables()
 
             root.extract_variables(pattern)
             root.extract_static(pattern)
-            log.debug("Successfully extracted variables and sinks from program")
+            #log.debug("Successfully extracted variables and sinks from program")
             
             # Fetch variables program - global state of the program
             variables, san_flows, inits = root.get_variables()
@@ -188,7 +187,9 @@ if __name__ == "__main__":
             "Please provide an AST of the program slice to parse and vulnerability patterns."
         )
         log.error(
-            "Usage:\n\tpython main.py <input_slice.json> <vulnerability_patterns.json>\n"
+            "Usage:\n\tpython main.py <input_slice.json> <vulnerability_patterns.json>\n\t" \
+            "or\n\t" \
+            "python main.py -t <number_of_tests>\n"
         )
         sys.exit(1)
 
@@ -198,8 +199,10 @@ if __name__ == "__main__":
         try:
             n_programs = int(sys.argv[2])
             assert n_programs > 0
+            assert n_programs < 16
         except:
-            log.error("Please provide a valid number of tests")
+            log.error("Please provide a valid number of tests (1-15)")
+            sys.exit(1)
 
         program_list = ['1a-basic-flow.py', '1b-basic-flow.py',
                         '2-expr-binary-ops.py',
@@ -242,16 +245,21 @@ if __name__ == "__main__":
 
         if perfect:
             log.info("All files identical ✅")
+
+        log.info("Done")
+
         exit(0)
 
     with open(sys.argv[1]) as slice_input:
         tree = json.load(slice_input)
-    log.debug("Finished parsing tree")
+    #log.debug("Finished parsing tree")
 
     program_name = Path(sys.argv[1]).stem
 
     with open(sys.argv[2]) as pattern_input:
         patterns = json.load(pattern_input)
-    log.debug("Finished loading %d vulnerability patterns" % len(patterns))
+    #log.debug("Finished loading %d vulnerability patterns" % len(patterns))
 
     main(tree, patterns, program_name)
+
+    log.info("Done")

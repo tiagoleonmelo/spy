@@ -54,7 +54,7 @@ Rules of thumb
 
 
 class Node:
-    """Tree Node. Contains the ast_type and all its attributes and children are stored in children.
+    """Tree Node. Contains the ast_type and all its attributes and children.
 
     A visual representation of helloworld.json would look like this:
 
@@ -75,16 +75,6 @@ class Node:
     We have a Module root node which contains an array of nodes. In this case, only one - an Expr node. One of the attributes of an Expr node is value,
     which stores another node, this time of type Call. Call has an attribute args, which contains an array of nodes (in this case, also only one) - Constant.
     Constant has an attribute called value which holds "Hello World".
-
-    - Should we discard ast_type-specific naming for the children? Instead of body/value/argues should it just be a Node attribute called "children"? Or
-    is it relevant for the problem? -> No, we should not. A Call node (for example) has children in attr:args and attr:func. We can't merge.
-    - We must handle these main node types, and its nestings:
-        * Expr
-        * Assign
-        * If
-        * While
-
-    Anything other than these is extra (as per project presentation)
     """
 
     # # Building the tree
@@ -235,7 +225,7 @@ class Node:
         # Removing dead entries
         clean = [c for c in children_array if c]
 
-        # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !! IMPORTANT: tell joao
+        # If one of my children is tainted, I am tainted + !! all my other children until the same level are tainted !!
         return clean
 
     def get_flows(self):
@@ -260,7 +250,7 @@ class Node:
             # If this is a sink
             if function_name in sinks:
                 # Add to output list
-                # TODO: Append?
+                # warning: Append?
                 san_flows[function_name] = arg_flows
 
                 # Return recursive call
@@ -310,7 +300,7 @@ class Node:
         return []
 
     def split_program(self, instructions):
-        # Given a set of nodess
+        # Given a set of nodes
         # For every if that we find
         # Return a program that considers condition true
         # Return a program that considers condition false
@@ -349,7 +339,7 @@ class Node:
                 while_body = child.split_program(child.children["body"])
                 parallel = []
                     
-                # TODO: Consider 0, 1 and 2 executions of the while. Currently only considering two
+                # warning: Consider 0, 1 and 2 executions of the while. Currently only considering two
 
                 # We merge every entry in the while body with every entry, since it can execute twice
                 # Permutations between all elements in while_body
