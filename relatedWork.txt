@@ -72,9 +72,29 @@
     -----------------
 
 2. Scalable Taint Specification Inference with Big Code ?
-    11 pages, skip ML
+    ~14 pages, skip ML
 
-    -
+    Uses ML 
+
+    Learns from dataset of provided example programs    
+        in order to infer taint chains??
+
+    While useful, all of these tools inherently rely on an existing specification that precisely describes the set of sources, sanitizers, and sinks the analyzer should consider. We refer to such a specification as a TAINT SPECIFICATION.
+
+    Key Challenge: Obtaining a Taint Specification
+    Obtaining such a specification for modern languages and libraries
+    can be very challenging: to determine the role of a candidate
+    API (source, sink, sanitizer, or none), one would have to inspect how information flows in and out of that API and how
+    that information is used. (classic way?) Manually doing so over thousands
+    of libraries with APIs often appearing in different contexts, is prohibitive
+
+    In this work we propose a new, scalable method for learning likely taint specifications in a semi-supervised manner. 
+    Given an input dataset of programs D where only a very small subset of the APIs AM used by programs in D is manually annotated, our method infers specifications for the remaining, much larger un-annotated set of APIs AU used by programs in D
+
+    idk kinda boring + ml + ratio
+
+
+    
 
 3. PyT
     100+ pages
