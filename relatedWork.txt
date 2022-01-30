@@ -1,0 +1,82 @@
+1.Pythia: Identifying Dangerous Data-flows in Django-based Applications
+    6 pages
+    --abstact
+    To identify potentially dangerous data flows that can lead to XSS! and CSRF! defects
+
+    is the first mechanism to consider framework-specific elements in its analysis
+        involved the particular features of Django-based applications e.g. templates.
+    ----intro
+    Such frameworks include by default security features 
+    However, on many occasions developers need to disable such features to allow for specific functionalities.
+
+    To address such problems, we have developed Pythia,
+    a mechanism that analyzes Django-based applications to identify potentially
+    dangerous data paths. 
+    To do so, it checks if dangerous code constructs (i.e. the ones used to bypass the security checks provided by the framework) are included in an application. 
+    Then, by performing data-flow analysis it examines all critical application parts to
+    identify if any data that may incorporate user input reaches the
+    constructs identified in the first step.
+
+    Our mechanism borrows some of the standard ideas (Abstract
+    Syntax Tree (ast) analysis) and terms (sources and sinks) of other
+    data-flow analysis and taint tracking schemes.
+    But it also takes into account the complicated architecture
+    and the various mechanisms (inheritance) and features (templates)
+    of Django-based applications
+    ----django
+    A serious issue emerges when this bypassing happens in templates, a feature that provides a way to generate html dynamically.
+    Templates are supported by several frameworks including Django
+    and Laravel. In general, templates contain static parts of the desired
+    html output, together with some special syntax describing how
+    the dynamic content will be inserted.
+    To track such a vulnerability is not trivial because templates can
+    either include or inherit other templates
+    ----approach
+    To do so, Pythia analyzes an application’s views and templates, leaving out models as they do
+    not hold any relevant information (Model Template View). Figure 2 presents the basic steps
+    performed by our approach: First, Pythia searches for specific constructs, which we call sinks, marking any affected templates and
+    then, examines views to identify (1) if untrusted data can reach the
+    elements identified in the first step, (2) if other sinks are being used by the views.
+    --sinks 
+    A sink method depicts a coding construct where the hazard might
+    take place. In our case, a sink involves an invocation that
+    bypasses the default security mechanisms of a Django Application.
+    In such an application we can divide sinks into two categories,namely: in-view sinks, and template sinks
+    In-view sinks only affects a particular View, 
+    While template sinks may affect all the views that use those templates
+
+    Template sinks are filters like safeseq/safe, results in not filtering out dangerous characters and marking variables as safe 
+    In view sinks like @csrf_exempt, can lead to XSS
+
+    To trace dangerous data flows, Pythia expects as input two lists which in turn include the constructs of each category
+        two lists, one containing in view sinks and other template sinks
+
+    When Pythia identifies a sink, it then examines the application
+    for potential sources,
+    --analysis
+    First, our approach retrieves all project templates and generates their corresponding Abstract Syntax Trees (asts). Then,
+    starting from the root node of each ast, it recursively traverses all
+    children nodes searching for variables that reach a sink method.
+    Specifically, when Pythia identifies a sink, it marks the template as potentially dangerous
+    If the current template extends or includes another one, the approach goes on to examine the other
+    template too. In this way it creates a path that is recorded when a sink is found
+    2nd part? n percebi
+    ..
+    generates output. meh
+    --
+    creates ast of templates at runtime
+    --
+    results,meh
+    --
+    authors present 1 false positive and negative
+    -----------------
+
+2. Scalable Taint Specification Inference with Big Code ?
+    11 pages, skip ML
+
+    -
+
+3. PyT
+    100+ pages
+
+    -
