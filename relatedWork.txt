@@ -144,10 +144,32 @@
     Seldon relies on a highquality dataset and on a correctly annotated (but small) seed specification (AM?).
     
 
-3. PyT
+3. PyT - A Static Analysis Tool for Detecting Security Vulnerabilities in Python Web Applications
     100+ pages
 
+    Static analysis tool PyT 
+        created to detect security vulnerabilities in Python web applications, in particular using the framework Flask
+    An AST is built by the builtin AST library, and a CFG (control flow graph) is built from the AST
+    The resulting CFG is then processed so Flask specific features are taken into account.
+
+    ---
+    Ch 6 
+
+    Uses cfg..
+    lattices whathever that is, and some fixed point algorithm thingy
+    --
+    Ch 7
+    Process:
+    • The source code is parsed to an abstract syntax tree (denoted as AST) 
+    • The AST is systematically traversed and turned into a control flow graph
+    • The resulting CFG is prepared for the analysis by a framework adaptor,
+        The default adaptor is the Flask adaptor, but a similar module for Django applications could be devised.
+    • The fixed point algorithm is applied on the CFG and the resulting constraints
+        are annotated on each CFG node
+    • At last the annotated CFG is investigated, and a log is provided to the user 
+        giving precise information about the potential vulnerabilities found by the analysis
     -
+    i find nothing distinguishable about this :/
 
 --------------
 Make sure that you refer at least to the 3 papers given above, and try to include 2 other that you find via these papers' references or via eg. Google Scholar.
