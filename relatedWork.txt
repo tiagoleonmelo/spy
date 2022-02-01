@@ -1,74 +1,95 @@
 1.Pythia: Identifying Dangerous Data-flows in Django-based Applications
     6 pages
-    --abstact
-    To identify potentially dangerous data flows that can lead to XSS! and CSRF! defects
+    --abstract
+    Web frameworks like django provide default security mechanisms
+        however these can be disabled by the developers, introducing vulns like xss and csrf 
 
-    is the first mechanism to consider framework-specific elements in its analysis
-        involved the particular features of Django-based applications e.g. templates.
+    Frameworks problems:
+        complexity, template usage, inheritance mechanisms
+
+    Goal: Pythia: django framework analyser
+        To identify potentially dangerous data flows that can lead to XSS and CSRF defects
+        -
+        Pythia is the first mechanism to consider framework-specific elements in its analysis == like Django's templates.
+
     ----intro
+    Development frameworks are mainstream
     Such frameworks include by default security features 
     However, on many occasions developers need to disable such features to allow for specific functionalities.
+        which brings back vulns 
+    
+    Django uses MTV Model-Template-View (semi relevant for later)
+    Vuln detection within frameworks is hard cause of complexity
+        -inheritance mechanisms e.g. in django a template inherits another with disabled security checks
 
-    To address such problems, we have developed Pythia,
-    a mechanism that analyzes Django-based applications to identify potentially
-    dangerous data paths. 
-    To do so, it checks if dangerous code constructs (i.e. the ones used to bypass the security checks provided by the framework) are included in an application. 
-    Then, by performing data-flow analysis it examines all critical application parts to
-    identify if any data that may incorporate user input reaches the
-    constructs identified in the first step.
+    Pythia, a mechanism that analyzes Django-based applications to identify potentially dangerous data paths. 
+    It checks if dangerous code constructs (i.e. the ones used to bypass the security checks provided by the framework) are in the code
+    Then, by performing data-flow analysis it examines all critical application parts to identify if any data that may incorporate user input reaches the constructs identified in the first step.
+    (the bypassing mechanisms are the sinks..., sources are user input)?
 
-    Our mechanism borrows some of the standard ideas (Abstract
-    Syntax Tree (ast) analysis) and terms (sources and sinks) of other
-    data-flow analysis and taint tracking schemes.
-    But it also takes into account the complicated architecture
-    and the various mechanisms (inheritance) and features (templates)
-    of Django-based applications
+    Standard ideas (Abstract Syntax Tree (ast) analysis) and terms (sources and sinks)
+    But it also takes into account the complicated architecture and the various mechanisms (INHERITANCE) and features (TEMPLATES) of Django
+
     ----django
-    A serious issue emerges when this bypassing happens in templates, a feature that provides a way to generate html dynamically.
-    Templates are supported by several frameworks including Django
-    and Laravel. In general, templates contain static parts of the desired
-    html output, together with some special syntax describing how
-    the dynamic content will be inserted.
-    To track such a vulnerability is not trivial because templates can
-    either include or inherit other templates
+    A serious issue emerges when this (security mechanisms) bypassing happens in TEMPLATES, 
+        a feature that provides a way to generate html dynamically.
+        Templates contain static parts, together with some special syntax describing how the dynamic content will be inserted.
+
+    To track such a vulnerability is not trivial because templates can either INCLUDE or INHERIT other templates
+
     ----approach
-    To do so, Pythia analyzes an application’s views and templates, leaving out models as they do
-    not hold any relevant information (Model Template View). Figure 2 presents the basic steps
-    performed by our approach: First, Pythia searches for specific constructs, which we call sinks, marking any affected templates and
-    then, examines views to identify (1) if untrusted data can reach the
-    elements identified in the first step, (2) if other sinks are being used by the views.
+    To do so, Pythia analyzes an application’s VIEWS and TEMPLATES, leaving out MODELS (MTV) as they are useless
+    First, Pythia searches for specific constructs, which we call sinks, marking any affected templates and then, 
+        examines views to identify (1) if untrusted data can reach the elements identified in the first step, 
+        (2) if other sinks are being used by the views.
     --sinks 
-    A sink method depicts a coding construct where the hazard might
-    take place. In our case, a sink involves an invocation that
-    bypasses the default security mechanisms of a Django Application.
-    In such an application we can divide sinks into two categories,namely: in-view sinks, and template sinks
+    A sink method depicts a coding construct where the hazard might take place. 
+        In our case, a sink involves an invocation that bypasses the default security mechanisms of a Django Application.
+
+    There are:
+        in-view sinks
+        template sinks
+
     In-view sinks only affects a particular View, 
     While template sinks may affect all the views that use those templates
 
     Template sinks are filters like safeseq/safe, results in not filtering out dangerous characters and marking variables as safe 
-    In view sinks like @csrf_exempt, can lead to XSS
+    In view sinks like @csrf_exempt, can lead to XSS (useless info)
 
-    To trace dangerous data flows, Pythia expects as input two lists which in turn include the constructs of each category
-        two lists, one containing in view sinks and other template sinks
+    To trace dangerous data flows, Pythia expects as input 2 lists:
+        one containing in view sinks
+        and other containing template sinks
 
-    When Pythia identifies a sink, it then examines the application
-    for potential sources,
-    --analysis
-    First, our approach retrieves all project templates and generates their corresponding Abstract Syntax Trees (asts). Then,
-    starting from the root node of each ast, it recursively traverses all
-    children nodes searching for variables that reach a sink method.
-    Specifically, when Pythia identifies a sink, it marks the template as potentially dangerous
-    If the current template extends or includes another one, the approach goes on to examine the other
-    template too. In this way it creates a path that is recorded when a sink is found
-    2nd part? n percebi
-    ..
-    generates output. meh
+    --analysis-algorithm
+    1. Get all project templates and generates their corresponding Abstract Syntax Trees
+    2.Then, starting from the root node of each ast, it recursively traverses all children nodes 
+        searching for variables that reach a sink method.
+        when Pythia identifies a sink, it marks the template as potentially dangerous
+            If the current template extends or includes another one, the approach goes on to examine the other template too. 
+                In this way it creates a path that is recorded when a sink is found
+                When a dangerous path is found, the current node and the template ancestry are kept in a key-value store 
+                in order to be cross-examined in the second stage
+    3.Then, it traverses the ast of each View to identify:
+        the templates that are being used and the data that each template requires to render the page. 
+            Finally, the results are being cross-examined in order to find unsafe data paths.
+    (n percebi 100%)
+    First it analyzes templates to get the linked paths of unsafe shit?
+    Then analyzes views to see 1.if they use those templates, 2.if they contain vulns on their own (inviewsinks)?
+    ya okay exato figura 2:
+        1. Analyze templates: search for  template-sinks and record all affected templates (linked list kinda)
+        2. Analyze views:
+            2.1 ) find which Templates those views use
+            2.2 ) search for inview-sinks
     --
-    creates ast of templates at runtime
+    Pythia requires the ast of a template
+        so it creates ast of templates at runtime
+        dynamic (django's templates ast creation) + static (rest)
     --
-    results,meh
+    authors present example cases of false positives and false negatives (4.5)
     --
-    authors present 1 false positive and negative
+    related work section, mentions other tools..
+    --
+    done
     -----------------
 
 2. Scalable Taint Specification Inference with Big Code ?
@@ -101,6 +122,9 @@
 
     -
 
+--------------
+Make sure that you refer at least to the 3 papers given above, and try to include 2 other that you find via these papers' references or via eg. Google Scholar.
+    -bro..
 -------------
 Concepts:
 
