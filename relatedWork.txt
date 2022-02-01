@@ -92,29 +92,56 @@
     done
     -----------------
 
-2. Scalable Taint Specification Inference with Big Code ?
+2. Scalable Taint Specification Inference with Big Code
     ~14 pages, skip ML
 
     Uses ML 
+        -semi supervised
+    Scalable
 
-    Learns from dataset of provided example programs    
-        in order to infer taint chains??
+    Learns from dataset of provided example programs
+        in order to infer taint specification- sets of sources,sinks,sanitizers
+            while requiring few manual annotations.
+
+    so this whole thing is about automatically getting taint specification, not so much about the analysis itself
+    --
 
     While useful, all of these tools inherently rely on an existing specification that precisely describes the set of sources, sanitizers, and sinks the analyzer should consider. We refer to such a specification as a TAINT SPECIFICATION.
+        -pythia needs you to provide the input lists
 
     Key Challenge: Obtaining a Taint Specification
-    Obtaining such a specification for modern languages and libraries
-    can be very challenging: to determine the role of a candidate
-    API (source, sink, sanitizer, or none), one would have to inspect how information flows in and out of that API and how
-    that information is used. (classic way?) Manually doing so over thousands
-    of libraries with APIs often appearing in different contexts, is prohibitive
+        Way to many and different frameworks and APIs
+            one would have to inspect how information flows in and out of that API and how that information is used. (classic way?)
+
+    Some other taint specification learning tools (related work to them):
+        are fully supervised (ml), anotate all sources sinks 
+        do not scale 
+        target strongly typed languages (not python)
 
     In this work we propose a new, scalable method for learning likely taint specifications in a semi-supervised manner. 
-    Given an input dataset of programs D where only a very small subset of the APIs AM used by programs in D is manually annotated, our method infers specifications for the remaining, much larger un-annotated set of APIs AU used by programs in D
+    Given an input dataset of programs (D) where only a very small subset of the APIs (AM) used by programs in (D) is manually annotated, our method infers specifications for the remaining, much larger un-annotated set of APIs (AU) used by programs in (D)
+    our approach leverages interactions among the APIs in (AU) and (AM)
+    --till here, abstract and intro
+
+    creates information flow graphs like anything else
+        check if flows passes through sanitizer
+
+    Encoding
+        Seldon takes as input the propagation graphs of many applications, where the role of most events is unknown. 
+        For each event in the graph, it generates variables whose scores indicate the likelihood of this event having a particular role. 
+            For example, referring to event request.files['f'].filename as a, 
+                it introduces three variables, a_src, a_san, a_sink
+                    a_src=0.98 means that event a most likely is a source.
+
+        As a next step, Seldon generates a constraint system that encodes reasonable assumptions on valid scores
+            For example, constraint (1) encodes the belief that, if a is source (i.e., a src is high), and b is sanitizer (i.e., b san is high) then at least one of the events receiving information flow from b must be a sink
+    --
+    Propogation graphs.. of information flow..
+    --
 
     idk kinda boring + ml + ratio
-
-
+    --
+    Seldon relies on a highquality dataset and on a correctly annotated (but small) seed specification (AM?).
     
 
 3. PyT
