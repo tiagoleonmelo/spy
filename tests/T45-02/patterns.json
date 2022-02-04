@@ -1,0 +1,13 @@
+[
+    {
+        "vulnerability": "Assigning_to_attribute",
+        "sources": [
+            "srcVar"
+        ],
+        "sanitizers": [],
+        "sinks": [
+            "attribute"
+        ],
+        "implicit": "no"
+    }
+]

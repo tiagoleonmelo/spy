@@ -1,0 +1,1 @@
+obj.attribute = srcVar

@@ -1,0 +1,91 @@
+{
+    "ast_type": "Module",
+    "body": [
+        {
+            "ast_type": "Assign",
+            "col_offset": 0,
+            "lineno": 1,
+            "targets": [
+                {
+                    "ast_type": "Attribute",
+                    "attr": "g",
+                    "col_offset": 0,
+                    "ctx": {
+                        "ast_type": "Store"
+                    },
+                    "lineno": 1,
+                    "value": {
+                        "ast_type": "Attribute",
+                        "attr": "f",
+                        "col_offset": 0,
+                        "ctx": {
+                            "ast_type": "Load"
+                        },
+                        "lineno": 1,
+                        "value": {
+                            "ast_type": "Name",
+                            "col_offset": 0,
+                            "ctx": {
+                                "ast_type": "Load"
+                            },
+                            "id": "a",
+                            "lineno": 1
+                        }
+                    }
+                }
+            ],
+            "value": {
+                "ast_type": "Name",
+                "col_offset": 8,
+                "ctx": {
+                    "ast_type": "Load"
+                },
+                "id": "c",
+                "lineno": 1
+            }
+        },
+        {
+            "ast_type": "Assign",
+            "col_offset": 0,
+            "lineno": 2,
+            "targets": [
+                {
+                    "ast_type": "Name",
+                    "col_offset": 0,
+                    "ctx": {
+                        "ast_type": "Store"
+                    },
+                    "id": "b",
+                    "lineno": 2
+                }
+            ],
+            "value": {
+                "ast_type": "Attribute",
+                "attr": "g",
+                "col_offset": 4,
+                "ctx": {
+                    "ast_type": "Load"
+                },
+                "lineno": 2,
+                "value": {
+                    "ast_type": "Attribute",
+                    "attr": "f",
+                    "col_offset": 4,
+                    "ctx": {
+                        "ast_type": "Load"
+                    },
+                    "lineno": 2,
+                    "value": {
+                        "ast_type": "Name",
+                        "col_offset": 4,
+                        "ctx": {
+                            "ast_type": "Load"
+                        },
+                        "id": "a",
+                        "lineno": 2
+                    }
+                }
+            }
+        }
+    ]
+}

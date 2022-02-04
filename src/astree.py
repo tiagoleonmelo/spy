@@ -177,21 +177,40 @@ class Node:
         if self.ast_type == ASSIGN:
             # Declare target as initialized
             for child in self.children["targets"]:
-                inits[child.attributes["id"]] = True
+                if child.ast_type == "Attribute":
+                    return
+
+                if child.ast_type == "Tuple":
+                    for comp in child.children["elts"]:
+                        inits[comp.attributes["id"]] = True
+                else:
+                    inits[child.attributes["id"]] = True
 
             # Right hand side of assignment
             value = self.children["value"][0]
             if value.is_tainted():
                 # If there are any, the targets will inherit sources and sanitizers
                 for child in self.children["targets"]:
-                    child_name = child.attributes["id"]
+                    if child.ast_type == "Tuple":
+                        for comp in child.children["elts"]:
+                            child_name = comp.attributes["id"]
 
-                    flows = value.get_flows()  # Should return list of flows (source + sanitizers) inside val
-                    variables[child_name] += flows
+                            flows = value.get_flows()  # Should return list of flows (source + sanitizers) inside val
+                            variables[child_name] += flows
 
-                    # If the target is a sink, write to output
-                    if child_name in sinks:
-                        san_flows[child_name] = flows
+                            # If the target is a sink, write to output
+                            if child_name in sinks:
+                                san_flows[child_name] = flows
+                    
+                    else:
+                        child_name = child.attributes["id"]
+
+                        flows = value.get_flows()  # Should return list of flows (source + sanitizers) inside val
+                        variables[child_name] += flows
+
+                        # If the target is a sink, write to output
+                        if child_name in sinks:
+                            san_flows[child_name] = flows
 
         elif self.ast_type == EXPR:
             # Expr is always a value
@@ -235,10 +254,15 @@ class Node:
         if self.ast_type == CALL:
             # In a call, we can either have a sink or a sanitizer
             # If this is a source, the assignment branch will already cover it
-            function_name = self.attributes["func"]["id"]
+            if "id" in self.attributes["func"]:
+                function_name = self.attributes["func"]["id"]
+            else:
+                print("Probably an attribute")
+                return []
 
             # Functions dont have to be initialized
             inits.pop(function_name, None)
+
 
             arg_flows = []
 
@@ -247,11 +271,15 @@ class Node:
                 # Recursive call
                 arg_flows += arg.get_flows()
 
+
             # If this is a sink
             if function_name in sinks:
                 # Add to output list
                 # warning: Append?
-                san_flows[function_name] = arg_flows
+                if function_name not in san_flows.keys():
+                    san_flows[function_name] = []
+
+                san_flows[function_name] += arg_flows
 
                 # Return recursive call
                 return arg_flows

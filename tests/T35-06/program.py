@@ -1,0 +1,2 @@
+initializedVariable=randomVariable
+execute(initializedVariable, get)

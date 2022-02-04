@@ -1,0 +1,13 @@
+[
+    {
+        "vulnerability": "SQL injection A_1",
+        "source": "unknownVariable",
+        "sink": "execute",
+        "unsanitized flows": "no",
+        "sanitized flows": [
+            [
+                "mogrify"
+            ]
+        ]
+    }
+]

@@ -1,0 +1,38 @@
+{
+  "ast_type": "Module",
+  "body": [
+    {
+      "ast_type": "Assign",
+      "col_offset": 0,
+      "end_col_offset": 11,
+      "end_lineno": 1,
+      "lineno": 1,
+      "targets": [
+        {
+          "ast_type": "Name",
+          "col_offset": 0,
+          "ctx": {
+            "ast_type": "Store"
+          },
+          "end_col_offset": 7,
+          "end_lineno": 1,
+          "id": "execute",
+          "lineno": 1
+        }
+      ],
+      "type_comment": null,
+      "value": {
+        "ast_type": "Name",
+        "col_offset": 8,
+        "ctx": {
+          "ast_type": "Load"
+        },
+        "end_col_offset": 11,
+        "end_lineno": 1,
+        "id": "get",
+        "lineno": 1
+      }
+    }
+  ],
+  "type_ignores": []
+}

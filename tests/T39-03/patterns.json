@@ -1,0 +1,1 @@
+[  {"vulnerability": "NestedSanitizers",   "sources": ["x"],  "sanitizers": ["s1", "s2"],   "sinks": ["sink"],   "implicit": "no"} ]

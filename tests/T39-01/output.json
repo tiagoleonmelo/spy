@@ -1,0 +1,37 @@
+[
+    {
+        "vulnerability": "WhileIterations_1",
+        "source": "d3",
+        "sink": "sink",
+        "unsanitized flows": "yes",
+        "sanitized flows": []
+    },
+    {
+        "vulnerability": "WhileIterations_2",
+        "source": "d2",
+        "sink": "sink",
+        "unsanitized flows": "yes",
+        "sanitized flows": []
+    },
+    {
+        "vulnerability": "WhileIterations_3",
+        "source": "d1",
+        "sink": "sink",
+        "unsanitized flows": "yes",
+        "sanitized flows": []
+    },
+    {
+        "vulnerability": "WhileIterations_4",
+        "source": "src",
+        "sink": "sink",
+        "unsanitized flows": "yes",
+        "sanitized flows": []
+    },
+    {
+        "vulnerability": "WhileIterations_5",
+        "source": "c",
+        "sink": "sink",
+        "unsanitized flows": "yes",
+        "sanitized flows": []
+    }
+]

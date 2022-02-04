@@ -1,0 +1,9 @@
+[
+    {
+        "vulnerability": "SQL injection A_1",
+        "source": "request",
+        "sink": "execute",
+        "unsanitized_flows": "yes",
+        "sanitized_flows": []
+    }
+]

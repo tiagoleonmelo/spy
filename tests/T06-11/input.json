@@ -1,0 +1,192 @@
+{
+    "ast_type": "Module",
+    "body": [
+        {
+            "ast_type": "If",
+            "body": [
+                {
+                    "ast_type": "Assign",
+                    "col_offset": 4,
+                    "lineno": 4,
+                    "targets": [
+                        {
+                            "ast_type": "Name",
+                            "col_offset": 4,
+                            "ctx": {
+                                "ast_type": "Store"
+                            },
+                            "id": "k",
+                            "lineno": 4
+                        }
+                    ],
+                    "value": {
+                        "ast_type": "Name",
+                        "col_offset": 8,
+                        "ctx": {
+                            "ast_type": "Load"
+                        },
+                        "id": "a",
+                        "lineno": 4
+                    }
+                }
+            ],
+            "col_offset": 0,
+            "lineno": 3,
+            "orelse": [
+                {
+                    "ast_type": "If",
+                    "body": [
+                        {
+                            "ast_type": "Assign",
+                            "col_offset": 4,
+                            "lineno": 6,
+                            "targets": [
+                                {
+                                    "ast_type": "Name",
+                                    "col_offset": 4,
+                                    "ctx": {
+                                        "ast_type": "Store"
+                                    },
+                                    "id": "k",
+                                    "lineno": 6
+                                }
+                            ],
+                            "value": {
+                                "ast_type": "Name",
+                                "col_offset": 8,
+                                "ctx": {
+                                    "ast_type": "Load"
+                                },
+                                "id": "b",
+                                "lineno": 6
+                            }
+                        }
+                    ],
+                    "col_offset": 5,
+                    "lineno": 5,
+                    "orelse": [
+                        {
+                            "ast_type": "If",
+                            "body": [
+                                {
+                                    "ast_type": "Assign",
+                                    "col_offset": 4,
+                                    "lineno": 8,
+                                    "targets": [
+                                        {
+                                            "ast_type": "Name",
+                                            "col_offset": 4,
+                                            "ctx": {
+                                                "ast_type": "Store"
+                                            },
+                                            "id": "k",
+                                            "lineno": 8
+                                        }
+                                    ],
+                                    "value": {
+                                        "ast_type": "Name",
+                                        "col_offset": 8,
+                                        "ctx": {
+                                            "ast_type": "Load"
+                                        },
+                                        "id": "c",
+                                        "lineno": 8
+                                    }
+                                }
+                            ],
+                            "col_offset": 5,
+                            "lineno": 7,
+                            "orelse": [
+                                {
+                                    "ast_type": "Assign",
+                                    "col_offset": 4,
+                                    "lineno": 10,
+                                    "targets": [
+                                        {
+                                            "ast_type": "Name",
+                                            "col_offset": 4,
+                                            "ctx": {
+                                                "ast_type": "Store"
+                                            },
+                                            "id": "k",
+                                            "lineno": 10
+                                        }
+                                    ],
+                                    "value": {
+                                        "ast_type": "Name",
+                                        "col_offset": 8,
+                                        "ctx": {
+                                            "ast_type": "Load"
+                                        },
+                                        "id": "k",
+                                        "lineno": 10
+                                    }
+                                }
+                            ],
+                            "test": {
+                                "ast_type": "Name",
+                                "col_offset": 5,
+                                "ctx": {
+                                    "ast_type": "Load"
+                                },
+                                "id": "c",
+                                "lineno": 7
+                            }
+                        }
+                    ],
+                    "test": {
+                        "ast_type": "Name",
+                        "col_offset": 5,
+                        "ctx": {
+                            "ast_type": "Load"
+                        },
+                        "id": "b",
+                        "lineno": 5
+                    }
+                }
+            ],
+            "test": {
+                "ast_type": "Name",
+                "col_offset": 3,
+                "ctx": {
+                    "ast_type": "Load"
+                },
+                "id": "a",
+                "lineno": 3
+            }
+        },
+        {
+            "ast_type": "Expr",
+            "col_offset": 0,
+            "lineno": 11,
+            "value": {
+                "args": [
+                    {
+                        "ast_type": "Name",
+                        "col_offset": 5,
+                        "ctx": {
+                            "ast_type": "Load"
+                        },
+                        "id": "k",
+                        "lineno": 11
+                    }
+                ],
+                "ast_type": "Call",
+                "col_offset": 0,
+                "func": {
+                    "ast_type": "Name",
+                    "col_offset": 0,
+                    "ctx": {
+                        "ast_type": "Load"
+                    },
+                    "id": "sink",
+                    "lineno": 11
+                },
+                "keywords": [],
+                "kwargs": null,
+                "lineno": 11,
+                "starargs": null
+            }
+        }
+    ]
+}

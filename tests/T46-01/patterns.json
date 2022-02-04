@@ -1,0 +1,1 @@
+[  {"vulnerability": "A",   "sources": ["b"], "sanitizers": ["c"],   "sinks": ["e"], "implicit": "yes"}]

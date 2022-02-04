@@ -1,0 +1,9 @@
+[
+    {
+        "vulnerability": "Assigning_to_attribute_1",
+        "source": "srcVar",
+        "sink": "attribute",
+        "unsanitized flows": "yes",
+        "sanitized flows": []
+    }
+]

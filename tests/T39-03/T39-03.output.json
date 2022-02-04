@@ -1,0 +1,14 @@
+[
+    {
+        "vulnerability": "NestedSanitizers_1",
+        "source": "x",
+        "sink": "sink",
+        "unsanitized flows": "no",
+        "sanitized flows": [
+            [
+                "s2",
+                "s1"
+            ]
+        ]
+    }
+]

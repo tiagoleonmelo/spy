@@ -1,0 +1,1 @@
+[{"vulnerability": "SQL_injection_1", "source": "retrieve_uname", "sink": "execute", "unsanitized flows": "yes", "sanitized flows": []}]

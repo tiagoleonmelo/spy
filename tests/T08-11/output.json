@@ -1,0 +1,65 @@
+[{
+    "vulnerability": "A_1",
+    "source": "c",
+    "sink": "t",
+    "unsanitized flows": "no",
+    "sanitized flows": [
+        ["b", "e", "h", "t"],
+        ["e", "h", "t"],
+        ["b", "h", "t"],
+        ["h", "t"]
+    ]
+}, {
+    "vulnerability": "A_2",
+    "source": "c",
+    "sink": "g",
+    "unsanitized flows": "no",
+    "sanitized flows": [
+        ["b", "e", "h"],
+        ["e", "h"],
+        ["b", "h"],
+        ["h"]
+    ]
+}, {
+    "vulnerability": "A_3",
+    "source": "f",
+    "sink": "t",
+    "unsanitized flows": "no",
+    "sanitized flows": [
+        ["h", "t"]
+    ]
+}, {
+    "vulnerability": "A_4",
+    "source": "f",
+    "sink": "g",
+    "unsanitized flows": "no",
+    "sanitized flows": [
+        ["h"]
+    ]
+}, {
+    "vulnerability": "A_5",
+    "source": "a",
+    "sink": "t",
+    "unsanitized flows": "no",
+    "sanitized flows": [
+        ["e", "h", "t"],
+        ["h", "t"]
+    ]
+}, {
+    "vulnerability": "A_6",
+    "source": "a",
+    "sink": "g",
+    "unsanitized flows": "no",
+    "sanitized flows": [
+        ["e", "h"],
+        ["h"]
+    ]
+}, {
+    "vulnerability": "A_7",
+    "source": "g",
+    "sink": "t",
+    "unsanitized flows": "no",
+    "sanitized flows": [
+        ["t"]
+    ]
+}]
